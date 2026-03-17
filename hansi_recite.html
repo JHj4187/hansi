@@ -229,6 +229,29 @@ body{font-family:'Noto Sans KR',sans-serif;background:#ece6da;color:var(--ink);m
 @keyframes lda{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
 .inote{font-size:12px;color:var(--il);background:var(--pw);padding:8px 12px;border-radius:7px;line-height:1.7;margin-bottom:11px}
 .sh{font-size:13px;font-weight:500;color:var(--im);margin-bottom:9px;letter-spacing:.04em}
+
+/* 녹음 재생 패널 */
+.play-panel{background:var(--pa);border:1.5px solid var(--red);border-radius:14px;padding:20px;margin-bottom:18px}
+.play-panel-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.play-panel-title{font-size:15px;font-weight:600;color:var(--ink)}
+.pb-lines{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.pb-line{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--pw);border-radius:10px;border:1.5px solid var(--pb);transition:all .2s;flex-wrap:wrap}
+.pb-line.playing{background:var(--rl);border-color:var(--red)}
+.pb-empty{opacity:.5}
+.pb-role{font-size:11px;font-weight:500;color:var(--il);min-width:24px;background:var(--pb);padding:2px 7px;border-radius:10px;text-align:center}
+.pb-hanja{font-family:'Noto Serif KR',serif;font-size:19px;letter-spacing:.06em;flex:1}
+.pb-btn{padding:7px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--red);background:transparent;color:var(--red);font-family:'Noto Sans KR',sans-serif;transition:all .15s;flex-shrink:0}
+.pb-btn:hover{background:var(--rl)}
+.pb-line.playing .pb-btn{background:var(--red);color:#fff}
+.pb-none{font-size:12px;color:var(--il)}
+.pb-note{font-size:12px;color:var(--il);text-align:center;padding-top:8px;border-top:1px solid var(--pb)}
+
+/* 연습 화면 즉시 재생 버튼 */
+.line-play-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px}
+.btn-line-play{display:flex;align-items:center;gap:5px;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--sage);background:transparent;color:var(--sage);font-family:'Noto Sans KR',sans-serif;transition:all .15s}
+.btn-line-play:hover{background:var(--sl)}
+.btn-line-play:disabled{opacity:.35;cursor:not-allowed;border-color:var(--pb);color:var(--il)}
+.btn-line-play.playing{background:var(--sage);color:#fff}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;z-index:200;transition:transform .3s ease;white-space:nowrap;pointer-events:none}
 .toast.show{transform:translateX(-50%) translateY(0)}
 </style>
@@ -318,6 +341,12 @@ body{font-family:'Noto Sans KR',sans-serif;background:#ece6da;color:var(--ink);m
         </div>
         <div class="recog-box" id="recogBox">
           <span class="recog-hint">입력한 음이 여기에 표시됩니다</span>
+        </div>
+        <!-- 즉시 재생 버튼 -->
+        <div class="line-play-row" id="linePlayRow" style="display:none">
+          <button class="btn-line-play" id="linePlayBtn" onclick="playCurrentLine()" disabled>
+            ▶ 이 구절 재생
+          </button>
         </div>
       </div>
     </div>
@@ -413,7 +442,7 @@ const POEMS=[
   }
 ];
 
-const ST={poem:null,li:0,results:[],recog:null,isRec:false,recTimer:null,recSec:0,waveTimer:null,korVisible:false,inputMode:'manual',ovOpen:false};
+const ST={poem:null,li:0,results:[],audioBlobs:[],recog:null,mediaRec:null,isRec:false,recTimer:null,recSec:0,waveTimer:null,korVisible:false,inputMode:'manual',ovOpen:false};
 
 (function(){
   document.getElementById('poemCards').innerHTML=POEMS.map(p=>`
@@ -428,7 +457,7 @@ const ST={poem:null,li:0,results:[],recog:null,isRec:false,recTimer:null,recSec:
 
 function loadPoem(id){
   ST.poem=POEMS.find(p=>p.id===id);
-  ST.li=0;ST.results=new Array(ST.poem.lines.length).fill(null);ST.korVisible=false;
+  ST.li=0;ST.results=new Array(ST.poem.lines.length).fill(null);ST.audioBlobs=new Array(ST.poem.lines.length).fill(null);ST.korVisible=false;
   document.getElementById('hdrB').textContent=ST.poem.title+' 음독';
   showScreen('s-prac');renderLine();
 }
@@ -488,38 +517,54 @@ function submitManual(){
 function toggleRec(){ST.isRec?stopRec():startRec();}
 function startRec(){
   if(window._micBlocked){
-    document.getElementById('voiceErr').textContent='localhost 실행 환경에서만 마이크를 사용할 수 있습니다. 위 안내를 참고하세요.';
+    document.getElementById('voiceErr').textContent='localhost 또는 https:// 환경에서만 마이크를 사용할 수 있습니다.';
     document.getElementById('voiceErr').classList.add('show');
     return;
   }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){showToast('이 브라우저는 음성인식 미지원');switchInput('manual');return;}
-  try{
-    const r=new SR();
-    r.lang='ko-KR';r.continuous=false;r.interimResults=true;
-    ST.recog=r;ST.isRec=true;ST.recSec=0;
-    let finalT='';
-    r.onresult=e=>{
-      let fin='',int='';
-      for(const res of e.results){if(res.isFinal)fin+=res[0].transcript;else int+=res[0].transcript;}
-      finalT=fin||int;setRecogBox(finalT,!fin);
+
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    // MediaRecorder — 실제 오디오 저장
+    const chunks=[];
+    ST.mediaRec=new MediaRecorder(stream);
+    ST.mediaRec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+    ST.mediaRec.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(chunks,{type:'audio/webm'});
+      ST.audioBlobs[ST.li]=blob;
     };
-    r.onend=()=>{stopRec();if(finalT)applyResult(finalT);};
-    r.onerror=e=>{
-      stopRec();
-      const errEl=document.getElementById('voiceErr');
-      if(e.error==='not-allowed'||e.error==='service-not-allowed'){
-        errEl.textContent='마이크 권한이 거부되었습니다. 브라우저 주소창 왼쪽 🔒 아이콘 → 마이크 → 허용으로 변경 후 새로고침하세요.';
-        errEl.classList.add('show');
-      } else {
-        errEl.textContent='인식 오류('+e.error+'). 직접 입력 탭을 사용하세요.';
-        errEl.classList.add('show');
-      }
-    };
-    r.start();
+    ST.mediaRec.start(100);
+
+    // SpeechRecognition — 텍스트 변환
+    try{
+      const r=new SR();
+      r.lang='ko-KR';r.continuous=false;r.interimResults=true;
+      ST.recog=r;ST.isRec=true;ST.recSec=0;
+      let finalT='';
+      r.onresult=e=>{
+        let fin='',int='';
+        for(const res of e.results){if(res.isFinal)fin+=res[0].transcript;else int+=res[0].transcript;}
+        finalT=fin||int;setRecogBox(finalT,!fin);
+      };
+      r.onend=()=>{stopRec();if(finalT)applyResult(finalT);};
+      r.onerror=e=>{
+        stopRec();
+        const errEl=document.getElementById('voiceErr');
+        if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+          errEl.textContent='마이크 권한이 거부되었습니다. 주소창 왼쪽 아이콘 → 마이크 → 허용으로 변경 후 새로고침하세요.';
+          errEl.classList.add('show');
+        } else {
+          errEl.textContent='인식 오류('+e.error+'). 직접 입력 탭을 사용하세요.';
+          errEl.classList.add('show');
+        }
+      };
+      r.start();
+    }catch(e){showToast('음성인식 시작 오류');}
+
     document.getElementById('recBtn').className='btn-mic rec';
     document.getElementById('recBtn').textContent='⏹';
-    document.getElementById('recSt').textContent='듣고 있습니다 — 클릭하면 중지';
+    document.getElementById('recSt').textContent='녹음 중 — 클릭하면 중지';
     document.getElementById('voiceErr').classList.remove('show');
     const sp=document.getElementById('psep');if(sp)sp.classList.add('pulse');
     startWave();
@@ -527,26 +572,43 @@ function startRec(){
       ST.recSec++;document.getElementById('recTm').textContent=`${ST.recSec}″`;
       if(ST.recSec>=12)stopRec();
     },1000);
-  }catch(e){showToast('음성인식 시작 오류');switchInput('manual');}
+
+  }).catch(()=>{
+    const errEl=document.getElementById('voiceErr');
+    errEl.textContent='마이크 권한이 필요합니다. 주소창에서 마이크를 허용해주세요.';
+    errEl.classList.add('show');
+  });
 }
 function stopRec(){
   ST.isRec=false;clearInterval(ST.recTimer);
   document.getElementById('recTm').textContent='';
   const sp=document.getElementById('psep');if(sp)sp.classList.remove('pulse');
-  stopWave();if(ST.recog){try{ST.recog.stop();}catch(e){}}
+  stopWave();
+  if(ST.recog){try{ST.recog.stop();}catch(e){}}
+  if(ST.mediaRec&&ST.mediaRec.state!=='inactive'){try{ST.mediaRec.stop();}catch(e){}}
   document.getElementById('recBtn').className='btn-mic done';
   document.getElementById('recBtn').textContent='✓';
-  document.getElementById('recSt').textContent='완료 — 다시 클릭하면 재시작';
+  document.getElementById('recSt').textContent='녹음 완료 — 다시 클릭하면 재녹음';
+  // 즉시 재생 버튼 활성화 (약간 딜레이 — MediaRecorder.onstop 처리 기다림)
+  setTimeout(()=>{
+    if(ST.audioBlobs[ST.li]){
+      document.getElementById('linePlayRow').style.display='flex';
+      document.getElementById('linePlayBtn').disabled=false;
+    }
+  },300);
 }
 function resetInput(){
   ST.isRec=false;clearInterval(ST.recTimer);stopWave();
   if(ST.recog){try{ST.recog.stop();}catch(e){}}
+  if(ST.mediaRec&&ST.mediaRec.state!=='inactive'){try{ST.mediaRec.stop();}catch(e){}}
   document.getElementById('recBtn').className='btn-mic idle';
   document.getElementById('recBtn').textContent='🎤';
-  document.getElementById('recSt').textContent='누르면 음성 인식 시작';
+  document.getElementById('recSt').textContent='누르면 녹음 시작';
   document.getElementById('recTm').textContent='';
   document.getElementById('mi').value='';
   document.getElementById('voiceErr').classList.remove('show');
+  document.getElementById('linePlayRow').style.display='none';
+  document.getElementById('linePlayBtn').disabled=true;
   setRecogBox('');
   document.getElementById('fbp').classList.remove('on');
   if(ST.poem)ST.poem.lines[ST.li].hanja.forEach((_,i)=>{const e=document.getElementById('hc'+i);if(e)e.className='hchar';});
@@ -579,6 +641,23 @@ function setPhrasing(ok){if(ST.results[ST.li])ST.results[ST.li].phrasOk=ok;docum
 function prevLine(){if(ST.li>0){ST.li--;renderLine();}}
 function nextLine(){ST.li<ST.poem.lines.length-1?(ST.li++,renderLine()):showAnalysis();}
 
+/* 연습 화면 — 현재 구절 즉시 재생 */
+let _lineAudio=null;
+function playCurrentLine(){
+  const blob=ST.audioBlobs[ST.li];
+  if(!blob){showToast('녹음된 내용이 없습니다');return;}
+  const btn=document.getElementById('linePlayBtn');
+  if(_lineAudio&&!_lineAudio.paused){
+    _lineAudio.pause();_lineAudio.currentTime=0;
+    btn.textContent='▶ 이 구절 재생';btn.classList.remove('playing');return;
+  }
+  if(_lineAudio){_lineAudio.pause();_lineAudio.currentTime=0;}
+  _lineAudio=new Audio(URL.createObjectURL(blob));
+  _lineAudio.play();
+  btn.textContent='⏸ 정지';btn.classList.add('playing');
+  _lineAudio.onended=()=>{btn.textContent='▶ 이 구절 재생';btn.classList.remove('playing');};
+}
+
 /* ══ ANALYSIS ══ */
 function showAnalysis(){document.getElementById('hdrB').textContent=ST.poem.title+' 분석';document.getElementById('anaT').textContent=`${ST.poem.title} — ${ST.poem.author} (${ST.poem.type})`;showScreen('s-ana');buildResults();buildPingze();buildRhyme();buildImagery();}
 function goBack(){showScreen('s-prac');document.getElementById('hdrB').textContent=ST.poem.title+' 음독';renderLine();}
@@ -587,10 +666,100 @@ function switchTab(id){const ids=['results','pingze','rhyme','imagery'];document
 function buildResults(){
   const p=ST.poem,fl=ST.results.filter(r=>r),avg=fl.length?fl.reduce((s,r)=>s+r.score,0)/fl.length:0;
   const pct=Math.round(avg*100),col=pct===100?'var(--sage)':pct>=60?'var(--gold)':'var(--red)';
-  let h=`<div class="totc"><div class="tn" style="color:${col}">${fl.length?pct+'%':'—'}</div><div class="tl">${fl.length?`전체 정확도 (${fl.length}/${p.lines.length}구 완료)`:'아직 음독 기록 없음'}</div></div><div class="rgrid">`;
+
+  // 재생 패널 — 항상 표시
+  const lineCards=p.lines.map((l,i)=>{
+    const blob=ST.audioBlobs[i];
+    if(!blob) return `<div class="pb-line pb-empty">
+      <span class="pb-role">${l.role}句</span>
+      <span class="pb-hanja">${l.hanja.join('')}</span>
+      <span class="pb-none">녹음 없음</span>
+    </div>`;
+    const url=URL.createObjectURL(blob);
+    return `<div class="pb-line" id="pbl-${i}">
+      <span class="pb-role">${l.role}句</span>
+      <span class="pb-hanja">${l.hanja.join('')}</span>
+      <audio id="pba-${i}" src="${url}" style="display:none"></audio>
+      <button class="pb-btn" id="pbb-${i}" onclick="playLine(${i})">▶ 재생</button>
+    </div>`;
+  }).join('');
+
+  const hasAny=ST.audioBlobs.some(b=>b!==null);
+  const playHtml=`<div class="play-panel">
+    <div class="play-panel-hdr">
+      <span class="play-panel-title">🎧 녹음 재생</span>
+      <button class="btn btn-p" style="font-size:12px;padding:7px 16px" onclick="playAll()" ${hasAny?'':'disabled style="opacity:.4;cursor:not-allowed"'}>전체 연속 재생 ▶▶</button>
+    </div>
+    <div class="pb-lines">${lineCards}</div>
+    <div class="pb-note">${hasAny?'각 구절을 개별 재생하거나 전체를 연속으로 들어보세요.':'음성 인식 탭에서 🎤 녹음을 해야 재생할 수 있습니다.'}</div>
+  </div>`;
+
+  let h=`${playHtml}<div class="totc"><div class="tn" style="color:${col}">${fl.length?pct+'%':'—'}</div><div class="tl">${fl.length?`전체 정확도 (${fl.length}/${p.lines.length}구 완료)`:'아직 음독 기록 없음'}</div></div><div class="rgrid">`;
   p.lines.forEach((l,i)=>{const r=ST.results[i];if(!r){h+=`<div class="rlc"><div class="rl-top"><span style="font-family:'Noto Serif KR',serif;font-size:17px">${l.hanja.join('')}</span><span class="sc" style="background:var(--pw);color:var(--il)">미완료</span></div></div>`;return;}const p2=Math.round(r.score*100),cc=p2===100?'sc-p':p2>=60?'sc-g':'sc-b';const chars=r.details.map(d=>`<div class="rci ${d.ok?'ok':d.got?'ng':'sk'}"><div class="rci-h">${d.hanja}</div><div class="rci-k">${d.exp}</div></div>`).join('');const ph=r.phrasOk===true?'<span style="font-size:11px;color:var(--sage)"> · ✓</span>':r.phrasOk===false?'<span style="font-size:11px;color:var(--red)"> · ✕</span>':'';h+=`<div class="rlc"><div class="rl-top"><div class="rl-ch">${chars}</div><span class="sc ${cc}">${p2}%</span>${ph}</div><div class="rl-bot">기준: ${l.kor.join(' ')} | 입력: ${r.transcript||'—'}</div></div>`;});
   h+=`</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-p" style="font-size:12px;padding:8px 14px" onclick="ST.li=0;renderLine();goBack()">처음부터 다시</button><button class="btn btn-s" style="font-size:12px;padding:8px 14px" onclick="goSel()">다른 시 선택</button></div>`;
   document.getElementById('tc-results').innerHTML=h;
+}
+
+/* 구절 개별 재생 */
+function playLine(i){
+  const audio=document.getElementById(`pba-${i}`);
+  const btn=document.getElementById(`pbb-${i}`);
+  const line=document.getElementById(`pbl-${i}`);
+  if(!audio)return;
+  // 다른 재생 중인 것 모두 정지
+  ST.poem.lines.forEach((_,j)=>{
+    const a=document.getElementById(`pba-${j}`);
+    const b=document.getElementById(`pbb-${j}`);
+    const l=document.getElementById(`pbl-${j}`);
+    if(a&&j!==i){a.pause();a.currentTime=0;}
+    if(b&&j!==i)b.textContent='▶ 재생';
+    if(l&&j!==i)l.classList.remove('playing');
+  });
+  if(!audio.paused){
+    audio.pause();audio.currentTime=0;
+    btn.textContent='▶ 재생';line.classList.remove('playing');
+    return;
+  }
+  audio.play();
+  btn.textContent='⏸ 정지';line.classList.add('playing');
+  audio.onended=()=>{btn.textContent='▶ 재생';line.classList.remove('playing');};
+}
+
+/* 전체 연속 재생 */
+function playAll(){
+  const lines=ST.poem.lines;
+  let idx=0;
+  // 재생 가능한 구절 인덱스 수집
+  const playable=lines.map((_,i)=>i).filter(i=>ST.audioBlobs[i]!==null);
+  if(!playable.length){showToast('녹음된 구절이 없습니다');return;}
+
+  // 모든 버튼 초기화
+  lines.forEach((_,i)=>{
+    const b=document.getElementById(`pbb-${i}`);
+    const l=document.getElementById(`pbl-${i}`);
+    if(b)b.textContent='▶ 재생';
+    if(l)l.classList.remove('playing');
+  });
+
+  function playNext(){
+    if(idx>=playable.length){showToast('전체 재생 완료 ✓');return;}
+    const i=playable[idx];
+    const audio=document.getElementById(`pba-${i}`);
+    const btn=document.getElementById(`pbb-${i}`);
+    const line=document.getElementById(`pbl-${i}`);
+    if(!audio){idx++;playNext();return;}
+    audio.currentTime=0;
+    audio.play();
+    if(btn)btn.textContent='▶ 재생 중';
+    if(line){line.classList.add('playing');line.scrollIntoView({behavior:'smooth',block:'nearest'});}
+    audio.onended=()=>{
+      if(btn)btn.textContent='▶ 재생';
+      if(line)line.classList.remove('playing');
+      idx++;
+      setTimeout(playNext,400);
+    };
+  }
+  playNext();
 }
 function buildPingze(){
   let h=`<div class="pzleg"><div class="pzl"><div class="pzld p">○</div>平聲</div><div class="pzl"><div class="pzld z">●</div>仄聲</div></div><div class="inote">押韻字(압운자)는 테두리선으로 강조됩니다.</div><div class="pzgrid">`;
