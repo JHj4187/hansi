@@ -246,12 +246,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:#ece6da;color:var(--ink);m
 .pb-none{font-size:12px;color:var(--il)}
 .pb-note{font-size:12px;color:var(--il);text-align:center;padding-top:8px;border-top:1px solid var(--pb)}
 
-/* 연습 화면 즉시 재생 버튼 */
-.line-play-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px}
-.btn-line-play{display:flex;align-items:center;gap:5px;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--sage);background:transparent;color:var(--sage);font-family:'Noto Sans KR',sans-serif;transition:all .15s}
-.btn-line-play:hover{background:var(--sl)}
-.btn-line-play:disabled{opacity:.35;cursor:not-allowed;border-color:var(--pb);color:var(--il)}
-.btn-line-play.playing{background:var(--sage);color:#fff}
+/* 녹음 메인 행 */
+.rec-row-main{display:flex;align-items:flex-start;justify-content:center;gap:32px;margin:4px 0 8px}
+.btn-play-main{width:56px;height:56px;border-radius:50%;border:2px solid var(--sage);background:transparent;color:var(--sage);font-size:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.btn-play-main:hover:not(:disabled){background:var(--sl)}
+.btn-play-main:disabled{opacity:.3;cursor:not-allowed}
+.btn-play-main.playing{background:var(--sage);color:#fff;border-color:var(--sage)}
+.voice-err{background:var(--rl);border:1px solid #e8b0a8;border-radius:8px;padding:8px 14px;font-size:12px;color:var(--red);text-align:center;max-width:360px;line-height:1.6}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;z-index:200;transition:transform .3s ease;white-space:nowrap;pointer-events:none}
 .toast.show{transform:translateX(-50%) translateY(0)}
 </style>
@@ -304,6 +305,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#ece6da;color:var(--ink);m
       <div class="pg-box" id="pgBox"></div>
       <div class="mtxt" id="mtxt"></div>
       <div class="input-section">
+        <!-- 파형 -->
         <div class="wave" id="wave">
           <div class="wb" style="height:7px"></div><div class="wb" style="height:13px"></div>
           <div class="wb" style="height:20px"></div><div class="wb" style="height:9px"></div>
@@ -312,41 +314,39 @@ body{font-family:'Noto Sans KR',sans-serif;background:#ece6da;color:var(--ink);m
           <div class="wb" style="height:15px"></div><div class="wb" style="height:7px"></div>
           <div class="wb" style="height:18px"></div><div class="wb" style="height:12px"></div>
         </div>
-        <div class="input-tabs">
-          <button class="itab on" id="tabM" onclick="switchInput('manual')">✏ 직접 입력</button>
-          <button class="itab" id="tabV" onclick="switchInput('voice')">🎤 음성 인식</button>
+
+        <!-- 🎤 녹음 버튼 + 재생 버튼 나란히 -->
+        <div class="rec-row-main">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+            <button class="btn-mic idle" id="recBtn" onclick="toggleRec()">🎤</button>
+            <div class="rec-st" id="recSt">눌러서 녹음 시작</div>
+            <div class="rec-tm" id="recTm"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+            <button class="btn-play-main" id="playBtn" onclick="playCurrentLine()" disabled>▶</button>
+            <div class="rec-st" id="playSt" style="color:var(--il)">녹음 후 재생</div>
+          </div>
         </div>
-        <!-- 직접 입력 -->
-        <div class="manual-area on" id="manualArea">
-          <div class="manual-label">한자의 음(한국어)을 붙여서 입력하세요</div>
+
+        <!-- 오류 메시지 -->
+        <div class="voice-err" id="voiceErr" style="display:none"></div>
+
+        <!-- 인식된 음 표시 -->
+        <div class="recog-box" id="recogBox">
+          <span class="recog-hint">녹음하면 인식된 음이 여기에 표시됩니다</span>
+        </div>
+
+        <!-- 직접 입력 (보조) -->
+        <div style="width:100%;max-width:380px">
+          <div style="font-size:11px;color:var(--il);text-align:center;margin-bottom:6px">
+            마이크가 안 될 때 — 직접 입력
+          </div>
           <div class="mi-row">
             <input class="mi" id="mi" placeholder="예: 강벽조유백"
               onkeydown="if(event.key==='Enter')submitManual()"
               oninput="previewInput(this.value)">
             <button class="btn btn-p" style="padding:10px 15px;font-size:13px" onclick="submitManual()">확인</button>
           </div>
-        </div>
-        <!-- 음성 인식 -->
-        <div class="voice-area" id="voiceArea">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
-            <button class="btn-mic idle" id="recBtn" onclick="toggleRec()">🎤</button>
-            <div class="rec-st" id="recSt">누르면 음성 인식 시작</div>
-            <div class="rec-tm" id="recTm"></div>
-          </div>
-          <div class="voice-err" id="voiceErr"></div>
-          <div class="voice-note" id="voiceNote">
-            Chrome 브라우저 + 마이크 허용 필요<br>
-            작동 안 되면 <strong>직접 입력</strong> 탭을 사용하세요
-          </div>
-        </div>
-        <div class="recog-box" id="recogBox">
-          <span class="recog-hint">입력한 음이 여기에 표시됩니다</span>
-        </div>
-        <!-- 즉시 재생 버튼 -->
-        <div class="line-play-row" id="linePlayRow" style="display:none">
-          <button class="btn-line-play" id="linePlayBtn" onclick="playCurrentLine()" disabled>
-            ▶ 이 구절 재생
-          </button>
         </div>
       </div>
     </div>
@@ -477,7 +477,7 @@ function renderLine(){
   document.getElementById('pgBox').innerHTML=`<div class="pg-inner"><span class="pg-hanja">${bf}</span><span class="pg-sep">/</span><span class="pg-hanja">${af}</span></div>`;
   document.getElementById('mtxt').textContent=l.meaning;
   document.getElementById('korBtn').textContent=ST.korVisible?'음 숨기기':'음 보기';
-  resetInput();
+  resetRec();
   document.getElementById('nextBtn').textContent=ST.li===n-1?'분석 보기 →':'다음 →';
 }
 
@@ -490,175 +490,175 @@ function toggleOv(){ST.ovOpen=!ST.ovOpen;document.getElementById('ovBox').style.
 function jumpLine(i){ST.li=i;renderLine();}
 function toggleKor(){ST.korVisible=!ST.korVisible;document.querySelectorAll('.kor').forEach(e=>e.classList.toggle('show',ST.korVisible));document.getElementById('korBtn').textContent=ST.korVisible?'음 숨기기':'음 보기';}
 
-function switchInput(mode){
-  ST.inputMode=mode;
-  document.getElementById('tabM').classList.toggle('on',mode==='manual');
-  document.getElementById('tabV').classList.toggle('on',mode==='voice');
-  document.getElementById('manualArea').classList.toggle('on',mode==='manual');
-  document.getElementById('voiceArea').classList.toggle('on',mode==='voice');
-  if(mode==='voice'&&window._micBlocked){
-    document.getElementById('voiceErr').textContent='현재 미리보기 창에서는 마이크가 차단됩니다. 파일을 다운로드 후 localhost에서 실행하거나 직접 입력을 사용하세요.';
-    document.getElementById('voiceErr').classList.add('show');
-    document.getElementById('voiceNote').style.display='none';
-  }
-  if(mode==='manual'&&ST.isRec)stopRec();
-  setRecogBox('');
-}
+function switchInput(){}  /* 탭 제거 — 하위 호환용 빈 함수 */
 
 function previewInput(v){v?setRecogBox(v,true):setRecogBox('');}
 function submitManual(){
-  const v=document.getElementById('mi').value.trim();
+  var v=document.getElementById('mi').value.trim();
   if(!v){showToast('음을 입력하세요');return;}
   document.getElementById('mi').value='';
   setRecogBox(v);applyResult(v);
 }
 
-/* ── 음성 인식 ── */
-function toggleRec(){ST.isRec?stopRec():startRec();}
+/* ══ 녹음 통합 (MediaRecorder + SpeechRecognition) ══ */
+var REC={media:null,sr:null,chunks:[],active:false,timer:null,sec:0,finalText:''};
+
+function toggleRec(){REC.active?stopRec():startRec();}
+
 function startRec(){
-  if(window._micBlocked){
-    document.getElementById('voiceErr').textContent='localhost 또는 https:// 환경에서만 마이크를 사용할 수 있습니다.';
-    document.getElementById('voiceErr').classList.add('show');
-    return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showErrMsg('이 브라우저는 녹음을 지원하지 않습니다. Chrome을 사용해주세요.');return;
   }
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){showToast('이 브라우저는 음성인식 미지원');switchInput('manual');return;}
-
-  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-    // MediaRecorder — 실제 오디오 저장
-    const chunks=[];
-    ST.mediaRec=new MediaRecorder(stream);
-    ST.mediaRec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
-    ST.mediaRec.onstop=()=>{
-      stream.getTracks().forEach(t=>t.stop());
-      const blob=new Blob(chunks,{type:'audio/webm'});
-      ST.audioBlobs[ST.li]=blob;
+  navigator.mediaDevices.getUserMedia({audio:true,video:false})
+  .then(function(stream){
+    hideErrMsg();
+    /* MediaRecorder */
+    REC.chunks=[];
+    REC.media=new MediaRecorder(stream);
+    REC.media.ondataavailable=function(e){if(e.data&&e.data.size>0)REC.chunks.push(e.data);};
+    REC.media.onstop=function(){
+      stream.getTracks().forEach(function(t){t.stop();});
+      if(REC.chunks.length>0){
+        var blob=new Blob(REC.chunks,{type:'audio/webm'});
+        ST.audioBlobs[ST.li]=blob;
+        /* 재생 버튼 활성화 */
+        document.getElementById('playBtn').disabled=false;
+        document.getElementById('playSt').textContent='▶ 눌러서 재생';
+      }
     };
-    ST.mediaRec.start(100);
-
-    // SpeechRecognition — 텍스트 변환
-    try{
-      const r=new SR();
-      r.lang='ko-KR';r.continuous=false;r.interimResults=true;
-      ST.recog=r;ST.isRec=true;ST.recSec=0;
-      let finalT='';
-      r.onresult=e=>{
-        let fin='',int='';
-        for(const res of e.results){if(res.isFinal)fin+=res[0].transcript;else int+=res[0].transcript;}
-        finalT=fin||int;setRecogBox(finalT,!fin);
-      };
-      r.onend=()=>{stopRec();if(finalT)applyResult(finalT);};
-      r.onerror=e=>{
-        stopRec();
-        const errEl=document.getElementById('voiceErr');
-        if(e.error==='not-allowed'||e.error==='service-not-allowed'){
-          errEl.textContent='마이크 권한이 거부되었습니다. 주소창 왼쪽 아이콘 → 마이크 → 허용으로 변경 후 새로고침하세요.';
-          errEl.classList.add('show');
-        } else {
-          errEl.textContent='인식 오류('+e.error+'). 직접 입력 탭을 사용하세요.';
-          errEl.classList.add('show');
+    REC.media.start(100);
+    /* SpeechRecognition */
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){
+      REC.sr=new SR();
+      REC.sr.lang='ko-KR';REC.sr.continuous=false;REC.sr.interimResults=true;
+      REC.finalText='';
+      REC.sr.onresult=function(e){
+        var fin='',intr='';
+        for(var i=0;i<e.results.length;i++){
+          if(e.results[i].isFinal)fin+=e.results[i][0].transcript;
+          else intr+=e.results[i][0].transcript;
         }
+        REC.finalText=fin||intr;
+        setRecogBox(REC.finalText,!fin);
       };
-      r.start();
-    }catch(e){showToast('음성인식 시작 오류');}
-
+      REC.sr.onend=function(){if(REC.active)stopRec();if(REC.finalText)applyResult(REC.finalText);};
+      REC.sr.onerror=function(e){
+        if(e.error==='not-allowed'){showErrMsg('마이크 권한 거부됨. 주소창 🔒 → 마이크 → 허용 → 새로고침');}
+        else if(e.error==='no-speech'){showErrMsg('음성이 인식되지 않았습니다. 다시 시도하세요.');}
+        else{showErrMsg('인식 오류('+e.error+'). 하단 직접 입력을 이용하세요.');}
+        if(REC.active)stopRec();
+      };
+      try{REC.sr.start();}catch(ex){}
+    }
+    /* UI */
+    REC.active=true;REC.sec=0;
     document.getElementById('recBtn').className='btn-mic rec';
     document.getElementById('recBtn').textContent='⏹';
     document.getElementById('recSt').textContent='녹음 중 — 클릭하면 중지';
-    document.getElementById('voiceErr').classList.remove('show');
-    const sp=document.getElementById('psep');if(sp)sp.classList.add('pulse');
+    var sp=document.getElementById('psep');if(sp)sp.classList.add('pulse');
     startWave();
-    ST.recTimer=setInterval(()=>{
-      ST.recSec++;document.getElementById('recTm').textContent=`${ST.recSec}″`;
-      if(ST.recSec>=12)stopRec();
+    REC.timer=setInterval(function(){
+      REC.sec++;
+      document.getElementById('recTm').textContent=REC.sec+'″';
+      if(REC.sec>=15)stopRec();
     },1000);
-
-  }).catch(()=>{
-    const errEl=document.getElementById('voiceErr');
-    errEl.textContent='마이크 권한이 필요합니다. 주소창에서 마이크를 허용해주세요.';
-    errEl.classList.add('show');
+  })
+  .catch(function(err){
+    if(err.name==='NotAllowedError'||err.name==='PermissionDeniedError'){
+      showErrMsg('마이크 권한을 허용해주세요. 주소창 🔒 → 마이크 → 허용 → 새로고침');
+    }else if(err.name==='NotFoundError'){
+      showErrMsg('마이크를 찾을 수 없습니다. 마이크가 연결되어 있는지 확인하세요.');
+    }else{
+      showErrMsg('마이크 오류: '+err.name+'. 하단 직접 입력을 이용하세요.');
+    }
   });
 }
+
 function stopRec(){
-  ST.isRec=false;clearInterval(ST.recTimer);
+  REC.active=false;clearInterval(REC.timer);
   document.getElementById('recTm').textContent='';
-  const sp=document.getElementById('psep');if(sp)sp.classList.remove('pulse');
   stopWave();
-  if(ST.recog){try{ST.recog.stop();}catch(e){}}
-  if(ST.mediaRec&&ST.mediaRec.state!=='inactive'){try{ST.mediaRec.stop();}catch(e){}}
+  var sp=document.getElementById('psep');if(sp)sp.classList.remove('pulse');
+  if(REC.sr){try{REC.sr.stop();}catch(e){}}
+  if(REC.media&&REC.media.state!=='inactive'){try{REC.media.stop();}catch(e){}}
   document.getElementById('recBtn').className='btn-mic done';
   document.getElementById('recBtn').textContent='✓';
-  document.getElementById('recSt').textContent='녹음 완료 — 다시 클릭하면 재녹음';
-  // 즉시 재생 버튼 활성화 (약간 딜레이 — MediaRecorder.onstop 처리 기다림)
-  setTimeout(()=>{
-    if(ST.audioBlobs[ST.li]){
-      document.getElementById('linePlayRow').style.display='flex';
-      document.getElementById('linePlayBtn').disabled=false;
-    }
-  },300);
+  document.getElementById('recSt').textContent='완료 — 다시 누르면 재녹음';
 }
-function resetInput(){
-  ST.isRec=false;clearInterval(ST.recTimer);stopWave();
-  if(ST.recog){try{ST.recog.stop();}catch(e){}}
-  if(ST.mediaRec&&ST.mediaRec.state!=='inactive'){try{ST.mediaRec.stop();}catch(e){}}
+
+function resetRec(){
+  REC.active=false;clearInterval(REC.timer);stopWave();
+  if(REC.sr){try{REC.sr.stop();}catch(e){}}
+  if(REC.media&&REC.media.state!=='inactive'){try{REC.media.stop();}catch(e){}}
+  REC.finalText='';REC.sec=0;
   document.getElementById('recBtn').className='btn-mic idle';
   document.getElementById('recBtn').textContent='🎤';
-  document.getElementById('recSt').textContent='누르면 녹음 시작';
+  document.getElementById('recSt').textContent='눌러서 녹음 시작';
   document.getElementById('recTm').textContent='';
+  document.getElementById('playBtn').disabled=true;
+  document.getElementById('playSt').textContent='녹음 후 재생';
   document.getElementById('mi').value='';
-  document.getElementById('voiceErr').classList.remove('show');
-  document.getElementById('linePlayRow').style.display='none';
-  document.getElementById('linePlayBtn').disabled=true;
-  setRecogBox('');
+  hideErrMsg();setRecogBox('');
   document.getElementById('fbp').classList.remove('on');
-  if(ST.poem)ST.poem.lines[ST.li].hanja.forEach((_,i)=>{const e=document.getElementById('hc'+i);if(e)e.className='hchar';});
+  if(ST.poem)ST.poem.lines[ST.li].hanja.forEach(function(_,i){var e=document.getElementById('hc'+i);if(e)e.className='hchar';});
 }
-function startWave(){document.querySelectorAll('.wb').forEach(b=>b.classList.add('act'));ST.waveTimer=setInterval(()=>{document.querySelectorAll('.wb').forEach(b=>{b.style.height=(5+Math.random()*20)+'px';});},100);}
-function stopWave(){clearInterval(ST.waveTimer);const hs=[7,13,20,9,17,7,22,11,15,7,18,12];document.querySelectorAll('.wb').forEach((b,i)=>{b.classList.remove('act');b.style.height=hs[i]+'px';});}
-function setRecogBox(txt,interim=false){const b=document.getElementById('recogBox');if(!txt){b.innerHTML='<span class="recog-hint">입력한 음이 여기에 표시됩니다</span>';return;}b.innerHTML=`<span style="color:${interim?'#7a9ac0':'var(--blue)'};">${txt}</span>`;}
+
+function showErrMsg(m){var e=document.getElementById('voiceErr');e.textContent=m;e.style.display='block';}
+function hideErrMsg(){document.getElementById('voiceErr').style.display='none';}
+
+function startWave(){document.querySelectorAll('.wb').forEach(function(b){b.classList.add('act');});ST.waveTimer=setInterval(function(){document.querySelectorAll('.wb').forEach(function(b){b.style.height=(5+Math.random()*20)+'px';});},100);}
+function stopWave(){clearInterval(ST.waveTimer);var hs=[7,13,20,9,17,7,22,11,15,7,18,12];document.querySelectorAll('.wb').forEach(function(b,i){b.classList.remove('act');b.style.height=hs[i]+'px';});}
+function setRecogBox(txt,interim){var b=document.getElementById('recogBox');if(!txt){b.innerHTML='<span class="recog-hint">녹음하면 인식된 음이 여기에 표시됩니다</span>';return;}b.innerHTML='<span style="color:'+(interim?'#7a9ac0':'var(--blue)')+';">'+txt+'</span>';}
+
+/* 현재 구절 재생 */
+var _curAudio=null;
+function playCurrentLine(){
+  var blob=ST.audioBlobs[ST.li];
+  if(!blob){showToast('녹음된 내용이 없습니다');return;}
+  var btn=document.getElementById('playBtn'),st=document.getElementById('playSt');
+  if(_curAudio&&!_curAudio.paused){
+    _curAudio.pause();_curAudio.currentTime=0;
+    btn.classList.remove('playing');btn.textContent='▶';st.textContent='▶ 눌러서 재생';return;
+  }
+  if(_curAudio){_curAudio.pause();_curAudio.currentTime=0;}
+  _curAudio=new Audio(URL.createObjectURL(blob));
+  _curAudio.play();
+  btn.classList.add('playing');btn.textContent='⏸';st.textContent='재생 중...';
+  _curAudio.onended=function(){btn.classList.remove('playing');btn.textContent='▶';st.textContent='▶ 눌러서 재생';};
+}
 
 function applyResult(t){
-  const l=ST.poem.lines[ST.li];const clean=t.replace(/\s/g,'');
-  const det=l.kor.map((ch,i)=>({hanja:l.hanja[i],exp:ch,got:clean[i]||'',ok:(clean[i]||'')===ch}));
-  const score=det.filter(d=>d.ok).length/det.length;
-  ST.results[ST.li]={transcript:clean,details:det,score,phrasOk:null};
-  det.forEach((d,i)=>{const e=document.getElementById('hc'+i);if(e)e.className='hchar '+(d.ok?'ok':'err');});
+  var l=ST.poem.lines[ST.li];var clean=t.replace(/\s/g,'');
+  var det=l.kor.map(function(ch,i){return{hanja:l.hanja[i],exp:ch,got:clean[i]||'',ok:(clean[i]||'')===ch};});
+  var score=det.filter(function(d){return d.ok;}).length/det.length;
+  ST.results[ST.li]={transcript:clean,details:det,score:score,phrasOk:null};
+  det.forEach(function(d,i){var e=document.getElementById('hc'+i);if(e)e.className='hchar '+(d.ok?'ok':'err');});
   renderFeedback(det,score,l,clean);
 }
 function renderFeedback(det,score,l,raw){
-  const pct=Math.round(score*100),sc=pct===100?'sc-p':pct>=60?'sc-g':'sc-b';
-  document.getElementById('fbLbl').textContent=`${ST.li+1}구 발음 정확도`;
-  document.getElementById('fbSc').textContent=pct===100?`완벽 ${pct}%`:pct>=60?`양호 ${pct}%`:`재시도 권장 ${pct}%`;
-  document.getElementById('fbSc').className=`sc ${sc}`;
-  document.getElementById('cg').innerHTML=det.map(d=>{const c=d.ok?'ok':d.got?'ng':'sk',bd=d.ok?'정확':d.got?'오류':'미인식';return`<div class="ci ${c}"><div class="ci-h">${d.hanja}</div><div class="ci-e">기준: ${d.exp}</div><div class="ci-g">${d.got?'입력: '+d.got:'—'}</div><div class="ci-bd">${bd}</div></div>`;}).join('');
-  const pg=l.hanja.slice(0,l.at).join('')+' / '+l.hanja.slice(l.at).join('');
-  document.getElementById('fbCmp').innerHTML=`<div class="fcr"><span class="fcl">기준 음</span><span class="fcv">${l.kor.join(' ')}</span></div><div class="fcr"><span class="fcl">입력 결과</span><span class="fcv r">${raw.split('').join(' ')||'—'}</span></div>`;
-  document.getElementById('pcT').innerHTML=`띄어읽기 기준: <strong>${pg}</strong> — 맞게 읽었나요?`;
+  var pct=Math.round(score*100),sc=pct===100?'sc-p':pct>=60?'sc-g':'sc-b';
+  document.getElementById('fbLbl').textContent=(ST.li+1)+'구 발음 정확도';
+  document.getElementById('fbSc').textContent=pct===100?'완벽 '+pct+'%':pct>=60?'양호 '+pct+'%':'재시도 권장 '+pct+'%';
+  document.getElementById('fbSc').className='sc '+sc;
+  document.getElementById('cg').innerHTML=det.map(function(d){
+    var c=d.ok?'ok':d.got?'ng':'sk',bd=d.ok?'정확':d.got?'오류':'미인식';
+    return '<div class="ci '+c+'"><div class="ci-h">'+d.hanja+'</div><div class="ci-e">기준: '+d.exp+'</div><div class="ci-g">'+(d.got?'입력: '+d.got:'—')+'</div><div class="ci-bd">'+bd+'</div></div>';
+  }).join('');
+  var pg=l.hanja.slice(0,l.at).join('')+' / '+l.hanja.slice(l.at).join('');
+  document.getElementById('fbCmp').innerHTML='<div class="fcr"><span class="fcl">기준 음</span><span class="fcv">'+l.kor.join(' ')+'</span></div><div class="fcr"><span class="fcl">입력 결과</span><span class="fcv r">'+(raw.split('').join(' ')||'—')+'</span></div>';
+  document.getElementById('pcT').innerHTML='띄어읽기 기준: <strong>'+pg+'</strong> — 맞게 읽었나요?';
   document.getElementById('pcbY').className='pcb';document.getElementById('pcbN').className='pcb';
   document.getElementById('fbp').classList.add('on');
 }
-function setPhrasing(ok){if(ST.results[ST.li])ST.results[ST.li].phrasOk=ok;document.getElementById('pcbY').className='pcb'+(ok===true?' yes':'');document.getElementById('pcbN').className='pcb'+(ok===false?' no':'');showToast(ok?'✓ 띄어읽기 확인':'↩ 다시 연습해보세요');}
-function prevLine(){if(ST.li>0){ST.li--;renderLine();}}
-function nextLine(){ST.li<ST.poem.lines.length-1?(ST.li++,renderLine()):showAnalysis();}
-
-/* 연습 화면 — 현재 구절 즉시 재생 */
-let _lineAudio=null;
-function playCurrentLine(){
-  const blob=ST.audioBlobs[ST.li];
-  if(!blob){showToast('녹음된 내용이 없습니다');return;}
-  const btn=document.getElementById('linePlayBtn');
-  if(_lineAudio&&!_lineAudio.paused){
-    _lineAudio.pause();_lineAudio.currentTime=0;
-    btn.textContent='▶ 이 구절 재생';btn.classList.remove('playing');return;
-  }
-  if(_lineAudio){_lineAudio.pause();_lineAudio.currentTime=0;}
-  _lineAudio=new Audio(URL.createObjectURL(blob));
-  _lineAudio.play();
-  btn.textContent='⏸ 정지';btn.classList.add('playing');
-  _lineAudio.onended=()=>{btn.textContent='▶ 이 구절 재생';btn.classList.remove('playing');};
+function setPhrasing(ok){
+  if(ST.results[ST.li])ST.results[ST.li].phrasOk=ok;
+  document.getElementById('pcbY').className='pcb'+(ok===true?' yes':'');
+  document.getElementById('pcbN').className='pcb'+(ok===false?' no':'');
+  showToast(ok?'✓ 띄어읽기 확인':'↩ 다시 연습해보세요');
 }
-
-/* ══ ANALYSIS ══ */
+function prevLine(){if(ST.li>0){ST.li--;renderLine();}}
+function nextLine(){if(ST.li<ST.poem.lines.length-1){ST.li++;renderLine();}else{showAnalysis();}}
 function showAnalysis(){document.getElementById('hdrB').textContent=ST.poem.title+' 분석';document.getElementById('anaT').textContent=`${ST.poem.title} — ${ST.poem.author} (${ST.poem.type})`;showScreen('s-ana');buildResults();buildPingze();buildRhyme();buildImagery();}
 function goBack(){showScreen('s-prac');document.getElementById('hdrB').textContent=ST.poem.title+' 음독';renderLine();}
 function switchTab(id){const ids=['results','pingze','rhyme','imagery'];document.querySelectorAll('.atab').forEach((b,i)=>b.classList.toggle('on',ids[i]===id));document.querySelectorAll('.tcont').forEach(t=>t.classList.remove('on'));document.getElementById('tc-'+id).classList.add('on');if(id==='imagery')setTimeout(()=>drawPainting(ST.poem),80);}
