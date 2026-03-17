@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>중학교 한문 단어 플래시카드 (278개)</title>
+<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#1a1a2e; color:#f0f0f0; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; overflow-x:hidden; }
+  .top-bar { background:#16213e; padding:14px 20px 10px; border-bottom:1px solid #0f3460; flex-shrink:0; }
+  .top-title { font-size:13px; color:#a0a8c0; margin-bottom:10px; text-align:center; }
+  .progress-bar { height:6px; background:#0f3460; border-radius:3px; overflow:hidden; margin-bottom:6px; }
+  .progress-fill { height:100%; background:linear-gradient(90deg,#e94560,#c0392b); border-radius:3px; transition:width 0.4s ease; }
+  .progress-label { font-size:13px; color:#6070a0; text-align:right; }
+  .filter-wrap { background:#16213e; padding:10px 16px 12px; display:flex; gap:8px; overflow-x:auto; flex-shrink:0; scrollbar-width:none; border-bottom:1px solid #0f3460; }
+  .filter-wrap::-webkit-scrollbar { display:none; }
+  .filter-btn { padding:7px 16px; border-radius:20px; font-size:13px; font-weight:500; cursor:pointer; border:1px solid #0f3460; background:#0f3460; color:#8090b8; white-space:nowrap; transition:all 0.15s; flex-shrink:0; }
+  .filter-btn.active { background:#e94560; color:#fff; border-color:#e94560; }
+  .main { flex:1; display:flex; flex-direction:column; padding:20px 16px 16px; gap:16px; overflow-y:auto; }
+  .card { background:#16213e; border-radius:20px; border:1px solid #0f3460; padding:28px 20px 24px; display:flex; flex-direction:column; align-items:center; gap:20px; min-height:340px; }
+  .word-display { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .char-card { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .char-box { width:110px; height:110px; border-radius:16px; border:2px solid #0f3460; background:#0f3460; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; transition:all 0.2s; overflow:hidden; }
+  .char-box:active { transform:scale(0.95); }
+  .char-box.animating { border-color:#e94560; background:#1a0f20; }
+  .char-static { font-size:68px; line-height:1; color:#e8e0f0; font-family:'Noto Serif KR','Noto Serif SC',serif; user-select:none; }
+  .char-svg-wrap { display:none; width:86px; height:86px; }
+  .char-box.animating .char-static { display:none; }
+  .char-box.animating .char-svg-wrap { display:block; }
+  .char-hunum { text-align:center; opacity:0; transition:opacity 0.4s; min-height:38px; }
+  .char-hunum.visible { opacity:1; }
+  .hun { display:block; font-size:15px; font-weight:600; color:#e8e0f0; line-height:1.3; }
+  .eum { display:block; font-size:13px; color:#e94560; margin-top:2px; }
+  .char-hint { font-size:11px; color:#405078; text-align:center; }
+  .meaning-area { width:100%; border-top:1px solid #0f3460; padding-top:18px; text-align:center; opacity:0; transition:opacity 0.4s; }
+  .meaning-area.visible { opacity:1; }
+  .word-hanja { font-size:28px; font-weight:700; color:#e94560; font-family:'Noto Serif KR',serif; letter-spacing:0.1em; margin-bottom:10px; }
+  .word-def { font-size:15px; color:#c0c8e0; line-height:1.8; margin-bottom:10px; word-break:keep-all; }
+  .word-meta { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .freq-badge { font-size:12px; padding:3px 10px; border-radius:20px; background:rgba(233,69,96,0.2); color:#e94560; border:1px solid rgba(233,69,96,0.3); }
+  .src-badge { font-size:12px; padding:3px 10px; border-radius:20px; background:rgba(255,255,255,0.05); color:#6070a0; border:1px solid #0f3460; }
+  .stroke-hint { font-size:12px; color:#405078; text-align:center; }
+  .reveal-btn { width:100%; padding:16px; border-radius:14px; font-size:17px; font-weight:600; cursor:pointer; border:2px solid #e94560; background:transparent; color:#e94560; letter-spacing:0.05em; transition:all 0.15s; flex-shrink:0; }
+  .reveal-btn:active { background:rgba(233,69,96,0.15); transform:scale(0.98); }
+  .rate-wrap { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; opacity:0; pointer-events:none; transition:opacity 0.3s; flex-shrink:0; }
+  .rate-wrap.visible { opacity:1; pointer-events:all; }
+  .rate-btn { padding:13px 6px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:transform 0.1s; }
+  .rate-btn:active { transform:scale(0.95); }
+  .r-again { background:#4a1515; color:#ff8080; }
+  .r-hard  { background:#3a2a0a; color:#ffc060; }
+  .r-good  { background:#0a2a1a; color:#60d090; }
+  .r-easy  { background:#0a2030; color:#60c0ff; }
+  .nav-wrap { display:grid; grid-template-columns:1fr auto 1fr; gap:8px; flex-shrink:0; }
+  .nav-btn { padding:14px 10px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition:all 0.15s; border:none; }
+  .btn-prev { background:#0f3460; color:#8090b8; }
+  .btn-next { background:#e94560; color:#fff; }
+  .btn-prev:active { background:#1a4070; }
+  .btn-next:active { background:#c0392b; }
+  .btn-shuffle { padding:14px 16px; border-radius:12px; font-size:14px; cursor:pointer; border:1px solid #0f3460; background:#0f3460; color:#6070a0; }
+  .stats-wrap { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; flex-shrink:0; padding-bottom:20px; }
+  .stat-card { background:#16213e; border-radius:12px; border:1px solid #0f3460; padding:12px 6px; text-align:center; }
+  .stat-n { font-size:22px; font-weight:700; color:#e8e0f0; }
+  .stat-l { font-size:11px; color:#405078; margin-top:3px; }
+</style>
+
+<style>
+.sub-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center}
+.sub-overlay.on{display:flex}
+.sub-box{background:#faf8f4;border-radius:16px;padding:28px 26px;width:92%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.sub-title{font-family:'Noto Serif KR',serif;font-size:18px;color:#1a1410;margin-bottom:18px;text-align:center}
+.sub-row{margin-bottom:13px}
+.sub-row label{display:block;font-size:12px;color:#6b5744;margin-bottom:5px;font-weight:500}
+.sub-row input,.sub-row select,.sub-row textarea{width:100%;padding:10px 12px;border:1px solid #e0d5c5;border-radius:8px;font-size:14px;font-family:'Noto Sans KR',sans-serif;color:#1a1410;background:#f3ede3;outline:none;transition:border .15s}
+.sub-row input:focus,.sub-row select:focus,.sub-row textarea:focus{border-color:#c0392b}
+.sub-row textarea{resize:vertical;min-height:70px}
+.sub-btns{display:flex;gap:10px;margin-top:18px}
+.sub-ok{flex:1;padding:12px;border-radius:9px;background:#c0392b;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:background .15s}
+.sub-ok:hover{background:#a93226}
+.sub-ok:disabled{background:#ccc;cursor:not-allowed}
+.sub-cancel{padding:12px 18px;border-radius:9px;background:#f3ede3;color:#6b5744;border:1px solid #e0d5c5;font-size:14px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.sub-msg{text-align:center;font-size:13px;margin-top:12px;min-height:18px}
+.sub-msg.ok{color:#3d6b4a}.sub-msg.err{color:#c0392b}
+.sub-float{position:fixed;bottom:22px;right:22px;z-index:1000;padding:12px 20px;background:#c0392b;color:#fff;border:none;border-radius:24px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;box-shadow:0 4px 14px rgba(192,57,43,.4);transition:all .2s}
+.sub-float:hover{background:#a93226;transform:translateY(-2px)}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="top-title">2022 개정 중학교 한문 교과서 단어 플래시카드</div>
+  <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+  <div class="progress-label" id="progLabel">1 / 278</div>
+</div>
+<div class="filter-wrap">
+  <button class="filter-btn active" onclick="applyFilter('all',this)">전체 (278)</button>
+  <button class="filter-btn" onclick="applyFilter('2',this)">2자 단어</button>
+  <button class="filter-btn" onclick="applyFilter('3',this)">3자 단어</button>
+  <button class="filter-btn" onclick="applyFilter('4',this)">4자 이상</button>
+  <button class="filter-btn" onclick="applyFilter('freq',this)">빈출 우선</button>
+</div>
+<div class="main">
+  <div class="card">
+    <div class="word-display" id="wordDisplay"></div>
+    <div class="stroke-hint">↑ 한자를 누르면 획순 애니메이션</div>
+    <div class="meaning-area" id="meaningArea">
+      <div class="word-hanja" id="wordHanja"></div>
+      <div class="word-def" id="wordDef"></div>
+      <div class="word-meta" id="wordMeta"></div>
+    </div>
+  </div>
+  <button class="reveal-btn" id="revealBtn" onclick="revealMeaning()">뜻 보기</button>
+  <div class="rate-wrap" id="rateWrap">
+    <button class="rate-btn r-again" onclick="rate('again')">다시</button>
+    <button class="rate-btn r-hard"  onclick="rate('hard')">어려움</button>
+    <button class="rate-btn r-good"  onclick="rate('good')">보통</button>
+    <button class="rate-btn r-easy"  onclick="rate('easy')">쉬움</button>
+  </div>
+  <div class="nav-wrap">
+    <button class="nav-btn btn-prev" onclick="prevCard()">← 이전</button>
+    <button class="btn-shuffle" onclick="shuffleDeck()">섞기</button>
+    <button class="nav-btn btn-next" onclick="nextCard()">다음 →</button>
+  </div>
+  <div class="stats-wrap">
+    <div class="stat-card"><div class="stat-n" id="sTotal">0</div><div class="stat-l">전체</div></div>
+    <div class="stat-card"><div class="stat-n" id="sAgain" style="color:#ff8080">0</div><div class="stat-l">다시</div></div>
+    <div class="stat-card"><div class="stat-n" id="sHard"  style="color:#ffc060">0</div><div class="stat-l">어려움</div></div>
+    <div class="stat-card"><div class="stat-n" id="sGood"  style="color:#60d090">0</div><div class="stat-l">보통+쉬움</div></div>
+  </div>
+</div>
+<script>
+const ALL_WORDS = [
+  {word:"秋夕",chars:[{c:"秋",hun:"가을",eum:"추"},{c:"夕",hun:"저녁",eum:"석"}],def:"음력 8월 15일, 한가위. 우리나라 명절.",freq:5,src:"교학98·글샘84·다락64·미래109·박영94"},
+  {word:"千里眼",chars:[{c:"千",hun:"일천",eum:"천"},{c:"里",hun:"마을",eum:"리"},{c:"眼",hun:"눈",eum:"안"}],def:"천 리 밖을 꿰뚫어 보는 눈. 예리한 판단력의 비유.",freq:4,src:"장원25·다락107·박영55·천재71"},
+  {word:"父母",chars:[{c:"父",hun:"아버지",eum:"부"},{c:"母",hun:"어머니",eum:"모"}],def:"아버지와 어머니.",freq:4,src:"글샘24·다락47·동아34·미래50"},
+  {word:"知音",chars:[{c:"知",hun:"알",eum:"지"},{c:"音",hun:"소리",eum:"음"}],def:"마음이 서로 통하는 참된 벗.",freq:3,src:"장원24·다락100·박영54"},
+  {word:"進路",chars:[{c:"進",hun:"나아갈",eum:"진"},{c:"路",hun:"길",eum:"로"}],def:"앞으로 나아갈 길. 장래의 방향.",freq:3,src:"대학39·미래59·천재43"},
+  {word:"卒業",chars:[{c:"卒",hun:"마칠",eum:"졸"},{c:"業",hun:"업",eum:"업"}],def:"일정한 교육 과정을 마침.",freq:3,src:"다락59·대학154·박영39"},
+  {word:"元日",chars:[{c:"元",hun:"으뜸",eum:"원"},{c:"日",hun:"날",eum:"일"}],def:"음력 정월 초하루. 설날.",freq:3,src:"다락64·미래109·박영94"},
+  {word:"午後",chars:[{c:"午",hun:"낮",eum:"오"},{c:"後",hun:"뒤",eum:"후"}],def:"낮 12시부터 밤 12시까지.",freq:3,src:"박영82·비상36·천재59"},
+  {word:"多情",chars:[{c:"多",hun:"많을",eum:"다"},{c:"情",hun:"뜻",eum:"정"}],def:"정이 많고 감정이 풍부함.",freq:3,src:"다락58·천재50·동아41"},
+  {word:"端午",chars:[{c:"端",hun:"바를",eum:"단"},{c:"午",hun:"낮",eum:"오"}],def:"음력 5월 5일. 우리나라 4대 명절의 하나.",freq:3,src:"다락64·미래109·박영94"},
+  {word:"兄弟",chars:[{c:"兄",hun:"형",eum:"형"},{c:"弟",hun:"아우",eum:"제"}],def:"형과 아우.",freq:3,src:"글샘24·동아34·미래51"},
+  {word:"冬至",chars:[{c:"冬",hun:"겨울",eum:"동"},{c:"至",hun:"이를",eum:"지"}],def:"24절기. 낮이 가장 짧은 날(12월 22일경).",freq:3,src:"다락65·박영88·비상37"},
+  {word:"登校",chars:[{c:"登",hun:"오를",eum:"등"},{c:"校",hun:"학교",eum:"교"}],def:"학교에 감.",freq:3,src:"미래54·박영38·천재50"},
+  {word:"讀書",chars:[{c:"讀",hun:"읽을",eum:"독"},{c:"書",hun:"글",eum:"서"}],def:"책을 읽음.",freq:3,src:"다락59·동아40·박영39"},
+  {word:"入學",chars:[{c:"入",hun:"들",eum:"입"},{c:"學",hun:"배울",eum:"학"}],def:"학교에 들어가 학생이 됨.",freq:3,src:"다락58·동아41·박영38"},
+  {word:"立春",chars:[{c:"立",hun:"설",eum:"립"},{c:"春",hun:"봄",eum:"춘"}],def:"24절기. 봄이 시작되는 날(2월 4일경).",freq:3,src:"글샘12·다락64·비상37"},
+  {word:"姊妹",chars:[{c:"姊",hun:"손윗누이",eum:"자"},{c:"妹",hun:"손아랫누이",eum:"매"}],def:"언니와 여동생.",freq:3,src:"글샘24·동아34·미래51"},
+  {word:"子正",chars:[{c:"子",hun:"아들",eum:"자"},{c:"正",hun:"바를",eum:"정"}],def:"밤 12시.",freq:3,src:"박영82·비상36·천재59"},
+  {word:"上元",chars:[{c:"上",hun:"윗",eum:"상"},{c:"元",hun:"으뜸",eum:"원"}],def:"음력 1월 15일. 정월 대보름.",freq:2,src:"미래109·박영94"},
+  {word:"地支",chars:[{c:"地",hun:"땅",eum:"지"},{c:"支",hun:"지탱할",eum:"지"}],def:"십이지. 자·축·인·묘·진·사·오·미·신·유·술·해.",freq:2,src:"미래104·천재58"},
+  {word:"未安",chars:[{c:"未",hun:"아닐",eum:"미"},{c:"安",hun:"편안할",eum:"안"}],def:"마음이 편안하지 못함. 미안함.",freq:2,src:"대학70·박영44"},
+  {word:"正午",chars:[{c:"正",hun:"바를",eum:"정"},{c:"午",hun:"낮",eum:"오"}],def:"낮 12시.",freq:2,src:"박영82·비상36"},
+  {word:"天干",chars:[{c:"天",hun:"하늘",eum:"천"},{c:"干",hun:"방패",eum:"간"}],def:"십간. 갑·을·병·정·무·기·경·신·임·계.",freq:2,src:"미래104·천재58"},
+  {word:"明太",chars:[{c:"明",hun:"밝을",eum:"명"},{c:"太",hun:"클",eum:"태"}],def:"명태. 대구목 대구과의 바닷물고기.",freq:2,src:"교학78·장원24"},
+  {word:"長短",chars:[{c:"長",hun:"길",eum:"장"},{c:"短",hun:"짧을",eum:"단"}],def:"길고 짧음.",freq:2,src:"교학18·다락47"},
+  {word:"興味",chars:[{c:"興",hun:"일어날",eum:"흥"},{c:"味",hun:"맛",eum:"미"}],def:"어떤 것에 마음이 쏠리는 느낌.",freq:2,src:"미래59·천재43"},
+  {word:"春夏秋冬",chars:[{c:"春",hun:"봄",eum:"춘"},{c:"夏",hun:"여름",eum:"하"},{c:"秋",hun:"가을",eum:"추"},{c:"冬",hun:"겨울",eum:"동"}],def:"봄·여름·가을·겨울의 네 계절.",freq:2,src:"글샘12·비상37"},
+  {word:"出席",chars:[{c:"出",hun:"날",eum:"출"},{c:"席",hun:"자리",eum:"석"}],def:"모임이나 자리에 참석함.",freq:2,src:"박영38·동아41"},
+  {word:"子女",chars:[{c:"子",hun:"아들",eum:"자"},{c:"女",hun:"여자",eum:"녀"}],def:"아들과 딸. 자식.",freq:2,src:"글샘24·미래51"},
+  {word:"夫婦",chars:[{c:"夫",hun:"지아비",eum:"부"},{c:"婦",hun:"지어미",eum:"부"}],def:"남편과 아내.",freq:2,src:"글샘24·미래50"},
+  {word:"高低",chars:[{c:"高",hun:"높을",eum:"고"},{c:"低",hun:"낮을",eum:"저"}],def:"높고 낮음.",freq:2,src:"교학18·다락46"},
+  {word:"同甲",chars:[{c:"同",hun:"한가지",eum:"동"},{c:"甲",hun:"첫째천간",eum:"갑"}],def:"나이가 같은 사람. 동갑내기.",freq:2,src:"박영82·천재58"},
+  {word:"協力",chars:[{c:"協",hun:"화합할",eum:"협"},{c:"力",hun:"힘",eum:"력"}],def:"힘을 합쳐 도움.",freq:2,src:"다락59·동아40"},
+  {word:"東西南北",chars:[{c:"東",hun:"동녘",eum:"동"},{c:"西",hun:"서녘",eum:"서"},{c:"南",hun:"남녘",eum:"남"},{c:"北",hun:"북녘",eum:"북"}],def:"동·서·남·북 사방(四方).",freq:2,src:"글샘16·다락47"},
+  {word:"日出",chars:[{c:"日",hun:"날",eum:"일"},{c:"出",hun:"날",eum:"출"}],def:"해가 돋음.",freq:2,src:"미래54·박영33"},
+  {word:"未來",chars:[{c:"未",hun:"아닐",eum:"미"},{c:"來",hun:"올",eum:"래"}],def:"아직 오지 않은 때. 앞날.",freq:2,src:"대학39·미래59"},
+  {word:"交友",chars:[{c:"交",hun:"사귈",eum:"교"},{c:"友",hun:"벗",eum:"우"}],def:"벗을 사귐.",freq:2,src:"다락59·동아40"},
+  {word:"夜深",chars:[{c:"夜",hun:"밤",eum:"야"},{c:"深",hun:"깊을",eum:"심"}],def:"밤이 깊음. 야심한 밤.",freq:2,src:"교학18·박영33"},
+  {word:"給食",chars:[{c:"給",hun:"줄",eum:"급"},{c:"食",hun:"밥",eum:"식"}],def:"학교 등에서 식사를 제공함.",freq:2,src:"미래55·천재51"},
+  {word:"今日",chars:[{c:"今",hun:"이제",eum:"금"},{c:"日",hun:"날",eum:"일"}],def:"오늘.",freq:2,src:"교학30·와이44"},
+  {word:"歲拜",chars:[{c:"歲",hun:"해",eum:"세"},{c:"拜",hun:"절",eum:"배"}],def:"설날에 어른께 드리는 절. 세배.",freq:2,src:"미래109·박영94"},
+  {word:"家族",chars:[{c:"家",hun:"집",eum:"가"},{c:"族",hun:"겨레",eum:"족"}],def:"부부와 자녀로 이루어진 공동체.",freq:2,src:"글샘24·미래50"},
+  {word:"授業",chars:[{c:"授",hun:"줄",eum:"수"},{c:"業",hun:"업",eum:"업"}],def:"교사가 학생에게 지식을 가르침.",freq:2,src:"미래55·천재50"},
+  {word:"省墓",chars:[{c:"省",hun:"살필",eum:"성"},{c:"墓",hun:"무덤",eum:"묘"}],def:"조상의 산소를 찾아가 돌봄.",freq:2,src:"대학81·미래109"},
+  {word:"午前",chars:[{c:"午",hun:"낮",eum:"오"},{c:"前",hun:"앞",eum:"전"}],def:"밤 12시부터 낮 12시까지.",freq:2,src:"박영82·비상36"},
+  {word:"開天節",chars:[{c:"開",hun:"열",eum:"개"},{c:"天",hun:"하늘",eum:"천"},{c:"節",hun:"마디",eum:"절"}],def:"단군왕검이 고조선을 건국한 날을 기념하는 국경일(10월 3일).",freq:2,src:"다락65·대학80"},
+  {word:"左右",chars:[{c:"左",hun:"왼",eum:"좌"},{c:"右",hun:"오른",eum:"우"}],def:"왼쪽과 오른쪽.",freq:2,src:"글샘16·다락46"},
+  {word:"光復節",chars:[{c:"光",hun:"빛",eum:"광"},{c:"復",hun:"돌아올",eum:"복"},{c:"節",hun:"마디",eum:"절"}],def:"1945년 8월 15일 광복을 기념하는 국경일.",freq:2,src:"다락65·대학80"},
+  {word:"人和",chars:[{c:"人",hun:"사람",eum:"인"},{c:"和",hun:"화합할",eum:"화"}],def:"사람들 사이의 화합.",freq:1,src:"다락53"},
+  {word:"全勝",chars:[{c:"全",hun:"온전할",eum:"전"},{c:"勝",hun:"이길",eum:"승"}],def:"모두 이김.",freq:1,src:"교학50"},
+  {word:"試金石",chars:[{c:"試",hun:"시험할",eum:"시"},{c:"金",hun:"쇠",eum:"금"},{c:"石",hun:"돌",eum:"석"}],def:"사람의 능력이나 가치를 판단하는 기준.",freq:1,src:"교학34"},
+  {word:"市長",chars:[{c:"市",hun:"저자",eum:"시"},{c:"長",hun:"길",eum:"장"}],def:"시(市)의 행정을 책임지는 최고 직위자.",freq:1,src:"비상43"},
+  {word:"十八番",chars:[{c:"十",hun:"열",eum:"십"},{c:"八",hun:"여덟",eum:"팔"},{c:"番",hun:"차례",eum:"번"}],def:"가장 자신 있는 노래나 장기.",freq:1,src:"교학66"},
+  {word:"心血",chars:[{c:"心",hun:"마음",eum:"심"},{c:"血",hun:"피",eum:"혈"}],def:"온 마음과 힘.",freq:1,src:"비상25"},
+  {word:"一當百",chars:[{c:"一",hun:"한",eum:"일"},{c:"當",hun:"마땅할",eum:"당"},{c:"百",hun:"일백",eum:"백"}],def:"한 사람이 백 사람을 당함. 매우 뛰어난 능력.",freq:1,src:"교학34"},
+  {word:"一面識",chars:[{c:"一",hun:"한",eum:"일"},{c:"面",hun:"낯",eum:"면"},{c:"識",hun:"알",eum:"식"}],def:"한 번 본 정도의 낮선 얼굴.",freq:1,src:"교학34"},
+  {word:"甚至於",chars:[{c:"甚",hun:"심할",eum:"심"},{c:"至",hun:"이를",eum:"지"},{c:"於",hun:"어조사",eum:"어"}],def:"심지어는. 더 나아가.",freq:1,src:"박영45"},
+  {word:"立秋",chars:[{c:"立",hun:"立",eum:"-"},{c:"秋",hun:"가을",eum:"추"}],def:"立秋의 뜻",freq:1,src:"글샘12"},
+  {word:"深夜",chars:[{c:"深",hun:"깊을",eum:"심"},{c:"夜",hun:"밤",eum:"야"}],def:"깊은 밤. 한밤중.",freq:1,src:"교학18"},
+  {word:"栽培",chars:[{c:"栽",hun:"심을",eum:"재"},{c:"培",hun:"북돋울",eum:"배"}],def:"식물을 심어 가꿈.",freq:1,src:"글샘124"},
+  {word:"身體",chars:[{c:"身",hun:"몸",eum:"신"},{c:"體",hun:"몸",eum:"체"}],def:"사람의 몸.",freq:1,src:"비상24"},
+  {word:"愼獨",chars:[{c:"愼",hun:"삼갈",eum:"신"},{c:"獨",hun:"홀로",eum:"독"}],def:"혼자 있을 때에도 언행을 삼감.",freq:1,src:"대학126"},
+  {word:"才能",chars:[{c:"才",hun:"재주",eum:"재"},{c:"能",hun:"능할",eum:"능"}],def:"타고난 능력.",freq:1,src:"미래59"},
+  {word:"植樹",chars:[{c:"植",hun:"심을",eum:"식"},{c:"樹",hun:"나무",eum:"수"}],def:"나무를 심음.",freq:1,src:"와이45"},
+  {word:"自信",chars:[{c:"自",hun:"스스로",eum:"자"},{c:"信",hun:"믿을",eum:"신"}],def:"자기 자신을 믿음.",freq:1,src:"비상43"},
+  {word:"自身",chars:[{c:"自",hun:"스스로",eum:"자"},{c:"身",hun:"몸",eum:"신"}],def:"자기 자신.",freq:1,src:"비상42"},
+  {word:"新舊",chars:[{c:"新",hun:"새",eum:"신"},{c:"舊",hun:"예",eum:"구"}],def:"새것과 헌것.",freq:1,src:"글샘16"},
+  {word:"食水",chars:[{c:"食",hun:"밥",eum:"식"},{c:"水",hun:"물",eum:"수"}],def:"먹는 물. 식수.",freq:1,src:"와이45"},
+  {word:"顔面",chars:[{c:"顔",hun:"얼굴",eum:"안"},{c:"面",hun:"낯",eum:"면"}],def:"얼굴.",freq:1,src:"비상24"},
+  {word:"雨水",chars:[{c:"雨",hun:"비",eum:"우"},{c:"水",hun:"물",eum:"수"}],def:"24절기. 날이 풀리고 비가 내리기 시작함(2월 19일경).",freq:1,src:"박영88"},
+  {word:"雨備",chars:[{c:"雨",hun:"비",eum:"우"},{c:"備",hun:"갖출",eum:"비"}],def:"비를 맞지 않도록 미리 준비함.",freq:1,src:"교학74"},
+  {word:"往十里",chars:[{c:"往",hun:"갈",eum:"왕"},{c:"十",hun:"열",eum:"십"},{c:"里",hun:"마을",eum:"리"}],def:"서울 성동구의 지명.",freq:1,src:"장원25"},
+  {word:"瓦解",chars:[{c:"瓦",hun:"기와",eum:"와"},{c:"解",hun:"풀",eum:"해"}],def:"기와가 무너지듯 조직이나 체계가 완전히 무너짐.",freq:1,src:"교학82"},
+  {word:"宇宙",chars:[{c:"宇",hun:"집",eum:"우"},{c:"宙",hun:"집",eum:"주"}],def:"천지 만물이 존재하는 공간.",freq:1,src:"교학18"},
+  {word:"溫泉",chars:[{c:"溫",hun:"따뜻할",eum:"온"},{c:"泉",hun:"샘",eum:"천"}],def:"땅속에서 더운물이 솟아나는 샘.",freq:1,src:"교학66"},
+  {word:"園藝",chars:[{c:"園",hun:"동산",eum:"원"},{c:"藝",hun:"재주",eum:"예"}],def:"채소·과일·꽃 등을 재배하는 일.",freq:1,src:"글샘124"},
+  {word:"溫突",chars:[{c:"溫",hun:"따뜻할",eum:"온"},{c:"突",hun:"갑자기",eum:"돌"}],def:"방바닥에 불을 때어 따뜻하게 하는 난방 시설. 온돌.",freq:1,src:"교학82"},
+  {word:"有利",chars:[{c:"有",hun:"있을",eum:"유"},{c:"利",hun:"이로울",eum:"리"}],def:"이롭고 유익함.",freq:1,src:"교학18"},
+  {word:"溫暖",chars:[{c:"溫",hun:"따뜻할",eum:"온"},{c:"暖",hun:"따뜻할",eum:"난"}],def:"날씨나 기온이 따뜻함.",freq:1,src:"와이51"},
+  {word:"傳承",chars:[{c:"傳",hun:"전할",eum:"전"},{c:"承",hun:"이을",eum:"승"}],def:"문화·풍습 등을 이어받아 전함.",freq:1,src:"교학50"},
+  {word:"五味子",chars:[{c:"五",hun:"다섯",eum:"오"},{c:"味",hun:"맛",eum:"미"},{c:"子",hun:"아들",eum:"자"}],def:"오미자. 오미자과의 낙엽 덩굴나무 열매.",freq:1,src:"대학87"},
+  {word:"有名稅",chars:[{c:"有",hun:"있을",eum:"유"},{c:"名",hun:"이름",eum:"명"},{c:"稅",hun:"세금",eum:"세"}],def:"유명한 사람이 치르는 불편함.",freq:1,src:"교학34"},
+  {word:"陸上",chars:[{c:"陸",hun:"陸",eum:"-"},{c:"上",hun:"윗",eum:"상"}],def:"陸上의 뜻",freq:1,src:"대학35"},
+  {word:"於此彼",chars:[{c:"於",hun:"어조사",eum:"어"},{c:"此",hun:"이",eum:"차"},{c:"彼",hun:"저",eum:"피"}],def:"이것저것 할 것 없이. 어쨌든.",freq:1,src:"박영45"},
+  {word:"意思",chars:[{c:"意",hun:"뜻",eum:"의"},{c:"思",hun:"생각",eum:"사"}],def:"생각이나 뜻.",freq:1,src:"와이45"},
+  {word:"義士",chars:[{c:"義",hun:"옳을",eum:"의"},{c:"士",hun:"선비",eum:"사"}],def:"나라를 위해 의로운 일을 한 사람.",freq:1,src:"와이45"},
+  {word:"耳目口鼻",chars:[{c:"耳",hun:"귀",eum:"이"},{c:"目",hun:"눈",eum:"목"},{c:"口",hun:"입",eum:"구"},{c:"鼻",hun:"코",eum:"비"}],def:"귀·눈·입·코. 얼굴의 기관.",freq:1,src:"비상24"},
+  {word:"人工",chars:[{c:"人",hun:"사람",eum:"인"},{c:"工",hun:"장인",eum:"공"}],def:"사람의 힘으로 만듦.",freq:1,src:"대학31"},
+  {word:"人工知能",chars:[{c:"人",hun:"사람",eum:"인"},{c:"工",hun:"장인",eum:"공"},{c:"知",hun:"알",eum:"지"},{c:"能",hun:"능할",eum:"능"}],def:"컴퓨터가 인간의 지능을 모방하는 기술. AI.",freq:1,src:"대학39"},
+  {word:"認知度",chars:[{c:"認",hun:"알",eum:"인"},{c:"知",hun:"알",eum:"지"},{c:"度",hun:"법도",eum:"도"}],def:"어떤 대상이 얼마나 알려져 있는가의 정도.",freq:1,src:"교학34"},
+  {word:"野上",chars:[{c:"野",hun:"들",eum:"야"},{c:"上",hun:"윗",eum:"상"}],def:"들판 위.",freq:1,src:"교학74"},
+  {word:"有名",chars:[{c:"有",hun:"있을",eum:"유"},{c:"名",hun:"이름",eum:"명"}],def:"이름이 널리 알려져 있음.",freq:1,src:"다락58"},
+  {word:"立春大吉",chars:[{c:"立",hun:"立",eum:"-"},{c:"春",hun:"봄",eum:"춘"},{c:"大",hun:"클",eum:"대"},{c:"吉",hun:"길할",eum:"길"}],def:"立春大吉의 뜻",freq:1,src:"박영88"},
+  {word:"傳統文化",chars:[{c:"傳",hun:"전할",eum:"전"},{c:"統",hun:"거느릴",eum:"통"},{c:"文",hun:"글",eum:"문"},{c:"化",hun:"될",eum:"화"}],def:"예로부터 이어 내려온 고유한 문화.",freq:1,src:"박영95"},
+  {word:"感情",chars:[{c:"感",hun:"느낄",eum:"감"},{c:"情",hun:"뜻",eum:"정"}],def:"어떤 일에 대한 마음의 움직임.",freq:1,src:"비상30"},
+  {word:"古參",chars:[{c:"古",hun:"예",eum:"고"},{c:"參",hun:"참여할",eum:"참"}],def:"오래전부터 그 집단에 속한 사람.",freq:1,src:"교학66"},
+  {word:"共感",chars:[{c:"共",hun:"함께",eum:"공"},{c:"感",hun:"느낄",eum:"감"}],def:"남의 감정에 자기도 같이 느낌.",freq:1,src:"와이50"},
+  {word:"關心",chars:[{c:"關",hun:"관계할",eum:"관"},{c:"心",hun:"마음",eum:"심"}],def:"어떤 것에 마음을 쏟거나 주의를 기울임.",freq:1,src:"천재43"},
+  {word:"校服",chars:[{c:"校",hun:"학교",eum:"교"},{c:"服",hun:"옷",eum:"복"}],def:"학교에서 정한 제복.",freq:1,src:"교학74"},
+  {word:"敎室",chars:[{c:"敎",hun:"가르칠",eum:"교"},{c:"室",hun:"집",eum:"실"}],def:"학교에서 수업을 하는 방.",freq:1,src:"미래54"},
+  {word:"干支",chars:[{c:"干",hun:"방패",eum:"간"},{c:"支",hun:"지탱할",eum:"지"}],def:"천간(天干)과 지지(地支)를 아울러 이르는 말.",freq:1,src:"다락65"},
+  {word:"球技",chars:[{c:"球",hun:"공",eum:"구"},{c:"技",hun:"재주",eum:"기"}],def:"공을 사용하는 운동 경기.",freq:1,src:"대학35"},
+  {word:"口舌數",chars:[{c:"口",hun:"입",eum:"구"},{c:"舌",hun:"혀",eum:"설"},{c:"數",hun:"셈",eum:"수"}],def:"입과 혀로 인하여 생기는 구설수.",freq:1,src:"교학34"},
+  {word:"歸家",chars:[{c:"歸",hun:"돌아올",eum:"귀"},{c:"家",hun:"집",eum:"가"}],def:"집으로 돌아감.",freq:1,src:"미래55"},
+  {word:"歸省",chars:[{c:"歸",hun:"돌아올",eum:"귀"},{c:"省",hun:"살필",eum:"성"}],def:"고향에 돌아가 부모를 뵘.",freq:1,src:"대학81"},
+  {word:"歸鄕",chars:[{c:"歸",hun:"돌아올",eum:"귀"},{c:"鄕",hun:"시골",eum:"향"}],def:"고향으로 돌아감.",freq:1,src:"교학54"},
+  {word:"市場",chars:[{c:"市",hun:"저자",eum:"시"},{c:"場",hun:"마당",eum:"장"}],def:"물건을 사고파는 곳.",freq:1,src:"비상42"},
+  {word:"起毛",chars:[{c:"起",hun:"일어날",eum:"기"},{c:"毛",hun:"털",eum:"모"}],def:"천의 표면을 보풀이 일게 함.",freq:1,src:"교학74"},
+  {word:"氣分",chars:[{c:"氣",hun:"기운",eum:"기"},{c:"分",hun:"나눌",eum:"분"}],def:"마음의 상태.",freq:1,src:"교학66"},
+  {word:"旣成服",chars:[{c:"旣",hun:"이미",eum:"기"},{c:"成",hun:"이룰",eum:"성"},{c:"服",hun:"옷",eum:"복"}],def:"이미 만들어져 있는 옷. 기성복.",freq:1,src:"교학74"},
+  {word:"氣勝",chars:[{c:"氣",hun:"기운",eum:"기"},{c:"勝",hun:"이길",eum:"승"}],def:"기세가 이김.",freq:1,src:"교학18"},
+  {word:"其然未然",chars:[{c:"其",hun:"그",eum:"기"},{c:"然",hun:"그럴",eum:"연"},{c:"未",hun:"아닐",eum:"미"},{c:"然",hun:"그럴",eum:"연"}],def:"그런지 그렇지 않은지 분명하지 않음.",freq:1,src:"교학58"},
+  {word:"落第",chars:[{c:"落",hun:"落",eum:"-"},{c:"第",hun:"차례",eum:"제"}],def:"落第의 뜻",freq:1,src:"교학18"},
+  {word:"亂打",chars:[{c:"亂",hun:"亂",eum:"-"},{c:"打",hun:"칠",eum:"타"}],def:"亂打의 뜻",freq:1,src:"대학43"},
+  {word:"男女",chars:[{c:"男",hun:"사내",eum:"남"},{c:"女",hun:"여자",eum:"녀"}],def:"남자와 여자.",freq:1,src:"박영32"},
+  {word:"男妹",chars:[{c:"男",hun:"사내",eum:"남"},{c:"妹",hun:"손아랫누이",eum:"매"}],def:"오빠와 여동생.",freq:1,src:"미래51"},
+  {word:"南方",chars:[{c:"南",hun:"남녘",eum:"남"},{c:"方",hun:"모",eum:"방"}],def:"남쪽 지방.",freq:1,src:"교학74"},
+  {word:"內外",chars:[{c:"內",hun:"안",eum:"내"},{c:"外",hun:"바깥",eum:"외"}],def:"안과 밖.",freq:1,src:"다락46"},
+  {word:"內衣",chars:[{c:"內",hun:"안",eum:"내"},{c:"衣",hun:"옷",eum:"의"}],def:"속옷.",freq:1,src:"교학74"},
+  {word:"乃終",chars:[{c:"乃",hun:"이에",eum:"내"},{c:"終",hun:"마칠",eum:"종"}],def:"결국에는.",freq:1,src:"교학54"},
+  {word:"內凶",chars:[{c:"內",hun:"안",eum:"내"},{c:"凶",hun:"흉할",eum:"흉"}],def:"집안에 흉한 일이 있음.",freq:1,src:"교학54"},
+  {word:"個性",chars:[{c:"個",hun:"낱",eum:"개"},{c:"性",hun:"성품",eum:"성"}],def:"다른 사람과 구별되는 고유한 성질.",freq:1,src:"미래59"},
+  {word:"今時",chars:[{c:"今",hun:"이제",eum:"금"},{c:"時",hun:"때",eum:"시"}],def:"요즘. 이 시대.",freq:1,src:"교학58"},
+  {word:"戰勝",chars:[{c:"戰",hun:"싸울",eum:"전"},{c:"勝",hun:"이길",eum:"승"}],def:"전쟁이나 경기에서 이김.",freq:1,src:"교학50"},
+  {word:"錢魚",chars:[{c:"錢",hun:"돈",eum:"전"},{c:"魚",hun:"물고기",eum:"어"}],def:"전어. 청어과의 바닷물고기.",freq:1,src:"교학78"},
+  {word:"前後",chars:[{c:"前",hun:"앞",eum:"전"},{c:"後",hun:"뒤",eum:"후"}],def:"앞과 뒤.",freq:1,src:"글샘16"},
+  {word:"庭園",chars:[{c:"庭",hun:"뜰",eum:"정"},{c:"園",hun:"동산",eum:"원"}],def:"집 안에 꾸민 정원.",freq:1,src:"교학82"},
+  {word:"正直",chars:[{c:"正",hun:"바를",eum:"정"},{c:"直",hun:"곧을",eum:"직"}],def:"마음에 거짓이나 꾸밈이 없고 바름.",freq:1,src:"글샘20"},
+  {word:"太極旗",chars:[{c:"太",hun:"클",eum:"태"},{c:"極",hun:"극진할",eum:"극"},{c:"旗",hun:"기",eum:"기"}],def:"대한민국의 국기.",freq:1,src:"대학98"},
+  {word:"退字",chars:[{c:"退",hun:"물러날",eum:"퇴"},{c:"字",hun:"글자",eum:"자"}],def:"이전에 쓰던 글자를 지우는 것. 퇴짜.",freq:1,src:"교학30"},
+  {word:"平和",chars:[{c:"平",hun:"평평할",eum:"평"},{c:"和",hun:"화합할",eum:"화"}],def:"전쟁이나 갈등 없이 평온한 상태.",freq:1,src:"대학31"},
+  {word:"匹敵",chars:[{c:"匹",hun:"필",eum:"필"},{c:"敵",hun:"원수",eum:"적"}],def:"서로 비교될 만큼 힘이나 실력이 엇비슷함.",freq:1,src:"교학30"},
+  {word:"下校",chars:[{c:"下",hun:"아래",eum:"하"},{c:"校",hun:"학교",eum:"교"}],def:"학교에서 집으로 돌아감.",freq:1,src:"다락58"},
+  {word:"何必",chars:[{c:"何",hun:"어찌",eum:"하"},{c:"必",hun:"반드시",eum:"필"}],def:"어찌 반드시. 굳이.",freq:1,src:"박영44"},
+  {word:"學生",chars:[{c:"學",hun:"배울",eum:"학"},{c:"生",hun:"날",eum:"생"}],def:"학교에 다니며 공부하는 사람.",freq:1,src:"미래54"},
+  {word:"看過",chars:[{c:"看",hun:"볼",eum:"간"},{c:"過",hun:"지날",eum:"과"}],def:"그냥 지나침. 눈감아 줌.",freq:1,src:"교학30"},
+  {word:"韓流",chars:[{c:"韓",hun:"나라",eum:"한"},{c:"流",hun:"흐를",eum:"류"}],def:"한국 문화가 세계에 유행하는 현상.",freq:1,src:"대학98"},
+  {word:"月下情人",chars:[{c:"月",hun:"달",eum:"월"},{c:"下",hun:"아래",eum:"하"},{c:"情",hun:"뜻",eum:"정"},{c:"人",hun:"사람",eum:"인"}],def:"달빛 아래에서 만나는 연인.",freq:1,src:"대학43"},
+  {word:"海洋",chars:[{c:"海",hun:"바다",eum:"해"},{c:"洋",hun:"바다",eum:"양"}],def:"넓은 바다.",freq:1,src:"박영32"},
+  {word:"行脚",chars:[{c:"行",hun:"다닐",eum:"행"},{c:"脚",hun:"발",eum:"각"}],def:"걸어서 여러 곳을 돌아다님.",freq:1,src:"교학66"},
+  {word:"玄關",chars:[{c:"玄",hun:"검을",eum:"현"},{c:"關",hun:"관계할",eum:"관"}],def:"집이나 건물의 출입구.",freq:1,src:"교학82"},
+  {word:"好事家",chars:[{c:"好",hun:"좋을",eum:"호"},{c:"事",hun:"일",eum:"사"},{c:"家",hun:"집",eum:"가"}],def:"좋은 일을 즐겨 하는 사람. 또는 취미가 많은 사람.",freq:1,src:"교학34"},
+  {word:"戶布",chars:[{c:"戶",hun:"집",eum:"호"},{c:"布",hun:"베",eum:"포"}],def:"호포. 집집마다 내는 군포.",freq:1,src:"교학74"},
+  {word:"紅一點",chars:[{c:"紅",hun:"붉을",eum:"홍"},{c:"一",hun:"한",eum:"일"},{c:"點",hun:"점",eum:"점"}],def:"많은 가운데 유일하게 섞인 하나. 여럿 속의 한 여자.",freq:1,src:"장원25"},
+  {word:"花開",chars:[{c:"花",hun:"꽃",eum:"화"},{c:"開",hun:"열",eum:"개"}],def:"꽃이 핌.",freq:1,src:"글샘12"},
+  {word:"話頭",chars:[{c:"話",hun:"말씀",eum:"화"},{c:"頭",hun:"머리",eum:"두"}],def:"이야기의 실마리. 화두.",freq:1,src:"교학66"},
+  {word:"歡喜",chars:[{c:"歡",hun:"기쁠",eum:"환"},{c:"喜",hun:"기쁠",eum:"희"}],def:"매우 기뻐함.",freq:1,src:"비상30"},
+  {word:"回甲",chars:[{c:"回",hun:"돌아올",eum:"회"},{c:"甲",hun:"첫째천간",eum:"갑"}],def:"예순한 살. 환갑.",freq:1,src:"박영82"},
+  {word:"孝道",chars:[{c:"孝",hun:"효도",eum:"효"},{c:"道",hun:"길",eum:"도"}],def:"부모를 정성껏 섬기는 도리.",freq:1,src:"동아35"},
+  {word:"訓民正音",chars:[{c:"訓",hun:"가르칠",eum:"훈"},{c:"民",hun:"백성",eum:"민"},{c:"正",hun:"바를",eum:"정"},{c:"音",hun:"소리",eum:"음"}],def:"세종대왕이 창제한 우리나라 글자.",freq:1,src:"대학31"},
+  {word:"休業",chars:[{c:"休",hun:"쉴",eum:"휴"},{c:"業",hun:"업",eum:"업"}],def:"학업이나 영업을 한동안 쉼.",freq:1,src:"와이44"},
+  {word:"希望",chars:[{c:"希",hun:"바랄",eum:"희"},{c:"望",hun:"바랄",eum:"망"}],def:"앞일에 대한 기대와 소망.",freq:1,src:"미래59"},
+  {word:"四知",chars:[{c:"四",hun:"넷",eum:"사"},{c:"知",hun:"알",eum:"지"}],def:"하늘이 알고 땅이 알고 내가 알고 네가 안다. 숨겨진 것은 없다는 교훈.",freq:1,src:"박영54"},
+  {word:"韓半島",chars:[{c:"韓",hun:"나라",eum:"한"},{c:"半",hun:"반",eum:"반"},{c:"島",hun:"섬",eum:"도"}],def:"우리나라가 자리 잡은 반도.",freq:1,src:"대학98"},
+  {word:"地文",chars:[{c:"地",hun:"땅",eum:"지"},{c:"文",hun:"글",eum:"문"}],def:"땅의 형세나 지리적 내용.",freq:1,src:"교학18"},
+  {word:"至尊",chars:[{c:"至",hun:"이를",eum:"지"},{c:"尊",hun:"높을",eum:"존"}],def:"더없이 높고 귀함.",freq:1,src:"박영44"},
+  {word:"天動",chars:[{c:"天",hun:"하늘",eum:"천"},{c:"動",hun:"움직일",eum:"동"}],def:"하늘이 움직임. 천동설에서 쓰임.",freq:1,src:"교학54"},
+  {word:"天地",chars:[{c:"天",hun:"하늘",eum:"천"},{c:"地",hun:"땅",eum:"지"}],def:"하늘과 땅. 세상.",freq:1,src:"박영32"},
+  {word:"尖端",chars:[{c:"尖",hun:"뾰족할",eum:"첨"},{c:"端",hun:"바를",eum:"단"}],def:"가장 앞서 나가는 첨단.",freq:1,src:"대학39"},
+  {word:"聽者",chars:[{c:"聽",hun:"들을",eum:"청"},{c:"者",hun:"놈",eum:"자"}],def:"듣는 사람.",freq:1,src:"와이50"},
+  {word:"體力",chars:[{c:"體",hun:"몸",eum:"체"},{c:"力",hun:"힘",eum:"력"}],def:"몸이 활동할 수 있는 힘.",freq:1,src:"대학35"},
+  {word:"秋分",chars:[{c:"秋",hun:"가을",eum:"추"},{c:"分",hun:"나눌",eum:"분"}],def:"24절기. 낮과 밤의 길이가 같은 날(9월 23일경).",freq:1,src:"박영88"},
+  {word:"快樂",chars:[{c:"快",hun:"쾌할",eum:"쾌"},{c:"樂",hun:"樂",eum:"-"}],def:"快樂의 뜻",freq:1,src:"비상31"},
+  {word:"間不容髮",chars:[{c:"間",hun:"사이",eum:"간"},{c:"不",hun:"不",eum:"-"},{c:"容",hun:"얼굴",eum:"용"},{c:"髮",hun:"터럭",eum:"발"}],def:"間不容髮의 뜻",freq:1,src:"교학58"},
+  {word:"多情多感",chars:[{c:"多",hun:"많을",eum:"다"},{c:"情",hun:"뜻",eum:"정"},{c:"多",hun:"많을",eum:"다"},{c:"感",hun:"느낄",eum:"감"}],def:"정이 많고 감수성이 풍부함.",freq:1,src:"박영38"},
+  {word:"堂堂",chars:[{c:"堂",hun:"집",eum:"당"},{c:"堂",hun:"집",eum:"당"}],def:"당당함. 모양이 크고 위엄이 있음.",freq:1,src:"교학82"},
+  {word:"當初",chars:[{c:"當",hun:"마땅할",eum:"당"},{c:"初",hun:"처음",eum:"초"}],def:"맨 처음. 애초에.",freq:1,src:"교학58"},
+  {word:"堂號",chars:[{c:"堂",hun:"집",eum:"당"},{c:"號",hun:"이름",eum:"호"}],def:"사랑채나 서재의 이름.",freq:1,src:"교학82"},
+  {word:"年月日時",chars:[{c:"年",hun:"해",eum:"년"},{c:"月",hun:"달",eum:"월"},{c:"日",hun:"날",eum:"일"},{c:"時",hun:"때",eum:"시"}],def:"연·월·일·시. 시간의 단위.",freq:1,src:"글샘16"},
+  {word:"德談",chars:[{c:"德",hun:"덕",eum:"덕"},{c:"談",hun:"말씀",eum:"담"}],def:"덕담. 복되고 좋은 일이 있기를 비는 말.",freq:1,src:"미래109"},
+  {word:"獨島",chars:[{c:"獨",hun:"홀로",eum:"독"},{c:"島",hun:"섬",eum:"도"}],def:"대한민국의 동쪽 끝 섬.",freq:1,src:"대학98"},
+  {word:"獨步",chars:[{c:"獨",hun:"홀로",eum:"독"},{c:"步",hun:"걸음",eum:"보"}],def:"혼자 걸음. 남이 따를 수 없을 정도로 뛰어남.",freq:1,src:"교학30"},
+  {word:"洞內",chars:[{c:"洞",hun:"골",eum:"동"},{c:"內",hun:"안",eum:"내"}],def:"마을 안.",freq:1,src:"교학54"},
+  {word:"同行",chars:[{c:"同",hun:"한가지",eum:"동"},{c:"行",hun:"다닐",eum:"행"}],def:"함께 길을 감.",freq:1,src:"박영33"},
+  {word:"落書",chars:[{c:"落",hun:"떨어질",eum:"락"},{c:"書",hun:"글",eum:"서"}],def:"함부로 낙서함. 또는 그 글씨.",freq:1,src:"교학66"},
+  {word:"浪說",chars:[{c:"浪",hun:"물결",eum:"랑"},{c:"說",hun:"말씀",eum:"설"}],def:"근거 없이 떠도는 말.",freq:1,src:"교학30"},
+  {word:"老益壯",chars:[{c:"老",hun:"늙을",eum:"로"},{c:"益",hun:"더할",eum:"익"},{c:"壯",hun:"씩씩할",eum:"장"}],def:"나이가 들수록 더욱 기운이 왕성함.",freq:1,src:"교학34"},
+  {word:"綠豆",chars:[{c:"綠",hun:"푸를",eum:"록"},{c:"豆",hun:"콩",eum:"두"}],def:"녹두. 콩과의 한해살이 식물.",freq:1,src:"교학78"},
+  {word:"流星",chars:[{c:"流",hun:"흐를",eum:"류"},{c:"星",hun:"별",eum:"성"}],def:"별똥별.",freq:1,src:"박영33"},
+  {word:"林延壽魚",chars:[{c:"林",hun:"수풀",eum:"림"},{c:"延",hun:"늘일",eum:"연"},{c:"壽",hun:"목숨",eum:"수"},{c:"魚",hun:"물고기",eum:"어"}],def:"임연수어. 쥐노래밋과의 바닷물고기.",freq:1,src:"교학78"},
+  {word:"萬歲",chars:[{c:"萬",hun:"일만",eum:"만"},{c:"歲",hun:"해",eum:"세"}],def:"만세. 오래 삶. 또는 환호의 외침.",freq:1,src:"교학30"},
+  {word:"賣店",chars:[{c:"賣",hun:"팔",eum:"매"},{c:"店",hun:"가게",eum:"점"}],def:"물건을 파는 가게.",freq:1,src:"천재51"},
+  {word:"明堂",chars:[{c:"明",hun:"밝을",eum:"명"},{c:"堂",hun:"집",eum:"당"}],def:"풍수에서 집터나 묏자리가 좋은 곳.",freq:1,src:"교학82"},
+  {word:"明卵",chars:[{c:"明",hun:"밝을",eum:"명"},{c:"卵",hun:"알",eum:"란"}],def:"명란. 명태의 알.",freq:1,src:"교학78"},
+  {word:"大暑",chars:[{c:"大",hun:"클",eum:"대"},{c:"暑",hun:"더울",eum:"서"}],def:"24절기. 가장 더운 시기(7월 23일경).",freq:1,src:"박영88"},
+  {word:"居之半",chars:[{c:"居",hun:"살",eum:"거"},{c:"之",hun:"갈",eum:"지"},{c:"半",hun:"반",eum:"반"}],def:"절반에 해당함. 어느 정도 됨.",freq:1,src:"교학58"},
+  {word:"見出紙",chars:[{c:"見",hun:"볼",eum:"견"},{c:"出",hun:"날",eum:"출"},{c:"紙",hun:"종이",eum:"지"}],def:"신문·잡지의 표제. 헤드라인.",freq:1,src:"교학66"},
+  {word:"敬老",chars:[{c:"敬",hun:"공경할",eum:"경"},{c:"老",hun:"늙을",eum:"로"}],def:"노인을 공경함.",freq:1,src:"비상42"},
+  {word:"經路",chars:[{c:"經",hun:"지날",eum:"경"},{c:"路",hun:"길",eum:"로"}],def:"지나는 길. 경유하는 경로.",freq:1,src:"비상43"},
+  {word:"季節",chars:[{c:"季",hun:"끝",eum:"계"},{c:"節",hun:"마디",eum:"절"}],def:"봄·여름·가을·겨울의 네 철.",freq:1,src:"비상37"},
+  {word:"古今",chars:[{c:"古",hun:"예",eum:"고"},{c:"今",hun:"이제",eum:"금"}],def:"옛날과 지금.",freq:1,src:"글샘16"},
+  {word:"高山",chars:[{c:"高",hun:"높을",eum:"고"},{c:"山",hun:"뫼",eum:"산"}],def:"높은 산.",freq:1,src:"다락52"},
+  {word:"固守",chars:[{c:"固",hun:"굳을",eum:"고"},{c:"守",hun:"지킬",eum:"수"}],def:"굳게 지킴.",freq:1,src:"교학50"},
+  {word:"高手",chars:[{c:"高",hun:"높을",eum:"고"},{c:"手",hun:"손",eum:"수"}],def:"솜씨가 뛰어난 사람.",freq:1,src:"교학50"},
+  {word:"尊重",chars:[{c:"尊",hun:"높을",eum:"존"},{c:"重",hun:"무거울",eum:"중"}],def:"높이어 귀중하게 여김.",freq:1,src:"글샘20"},
+  {word:"多濕",chars:[{c:"多",hun:"많을",eum:"다"},{c:"濕",hun:"젖을",eum:"습"}],def:"습기가 많음.",freq:1,src:"와이51"},
+  {word:"寒冷",chars:[{c:"寒",hun:"찰",eum:"한"},{c:"冷",hun:"찰",eum:"냉"}],def:"날씨가 차고 쌈.",freq:1,src:"와이51"},
+  {word:"蕩平菜",chars:[{c:"蕩",hun:"넓을",eum:"탕"},{c:"平",hun:"평평할",eum:"평"},{c:"菜",hun:"나물",eum:"채"}],def:"탕평채. 조선 시대 탕평책을 기념하여 만든 음식.",freq:1,src:"대학87"},
+  {word:"話者",chars:[{c:"話",hun:"말씀",eum:"화"},{c:"者",hun:"놈",eum:"자"}],def:"말하는 사람.",freq:1,src:"와이50"},
+  {word:"衆生",chars:[{c:"衆",hun:"무리",eum:"중"},{c:"生",hun:"날",eum:"생"}],def:"세상의 모든 살아있는 것.",freq:1,src:"교학54"},
+  {word:"可觀",chars:[{c:"可",hun:"옳을",eum:"가"},{c:"觀",hun:"볼",eum:"관"}],def:"볼 만함. 훌륭하거나 대단함.",freq:1,src:"교학30"},
+  {word:"假想現實",chars:[{c:"假",hun:"거짓",eum:"가"},{c:"想",hun:"생각",eum:"상"},{c:"現",hun:"나타날",eum:"현"},{c:"實",hun:"열매",eum:"실"}],def:"컴퓨터 등으로 만들어낸 가상의 현실 환경. VR.",freq:1,src:"대학39"},
+  {word:"加速",chars:[{c:"加",hun:"더할",eum:"가"},{c:"速",hun:"빠를",eum:"속"}],def:"속도가 빨라짐.",freq:1,src:"교학18"},
+  {word:"家訓",chars:[{c:"家",hun:"집",eum:"가"},{c:"訓",hun:"가르칠",eum:"훈"}],def:"한 집안에서 대대로 내려오는 교훈.",freq:1,src:"동아35"},
+  {word:"祖母",chars:[{c:"祖",hun:"할아버지",eum:"조"},{c:"母",hun:"어머니",eum:"모"}],def:"할머니.",freq:1,src:"글샘24"},
+  {word:"祖父",chars:[{c:"祖",hun:"할아버지",eum:"조"},{c:"父",hun:"아버지",eum:"부"}],def:"할아버지.",freq:1,src:"글샘24"},
+  {word:"祖父母",chars:[{c:"祖",hun:"할아버지",eum:"조"},{c:"父",hun:"아버지",eum:"부"},{c:"母",hun:"어머니",eum:"모"}],def:"할아버지와 할머니.",freq:1,src:"미래50"},
+  {word:"朝夕",chars:[{c:"朝",hun:"아침",eum:"조"},{c:"夕",hun:"저녁",eum:"석"}],def:"아침과 저녁. 하루 종일.",freq:1,src:"글샘16"},
+  {word:"調和",chars:[{c:"調",hun:"고를",eum:"조"},{c:"和",hun:"화합할",eum:"화"}],def:"서로 잘 어울림.",freq:1,src:"교학50"},
+  {word:"造化",chars:[{c:"造",hun:"지을",eum:"조"},{c:"化",hun:"될",eum:"화"}],def:"자연의 이치로 만물을 생성하는 작용.",freq:1,src:"교학50"},
+  {word:"造花",chars:[{c:"造",hun:"지을",eum:"조"},{c:"花",hun:"꽃",eum:"화"}],def:"인공으로 만든 꽃.",freq:1,src:"교학50"},
+  {word:"甲午改革",chars:[{c:"甲",hun:"첫째천간",eum:"갑"},{c:"午",hun:"낮",eum:"오"},{c:"改",hun:"고칠",eum:"개"},{c:"革",hun:"가죽",eum:"혁"}],def:"1894년(갑오년)에 일어난 근대적 개혁 운동.",freq:1,src:"천재59"},
+  {word:"走馬燈",chars:[{c:"走",hun:"달릴",eum:"주"},{c:"馬",hun:"말",eum:"마"},{c:"燈",hun:"등불",eum:"등"}],def:"말을 달리는 모양의 등불. 빠르게 변하는 상황의 비유.",freq:1,src:"대학154"},
+  {word:"住所",chars:[{c:"住",hun:"살",eum:"주"},{c:"所",hun:"바",eum:"소"}],def:"사람이 사는 곳의 주소.",freq:1,src:"천재42"},
+  {word:"晝夜",chars:[{c:"晝",hun:"낮",eum:"주"},{c:"夜",hun:"밤",eum:"야"}],def:"낮과 밤.",freq:1,src:"글샘16"},
+  {word:"假家",chars:[{c:"假",hun:"거짓",eum:"가"},{c:"家",hun:"집",eum:"가"}],def:"임시로 지은 집.",freq:1,src:"교학54"},
+  {word:"四骨",chars:[{c:"四",hun:"넷",eum:"사"},{c:"骨",hun:"뼈",eum:"골"}],def:"사대골. 몸의 네 부분 뼈.",freq:1,src:"교학78"},
+  {word:"山行",chars:[{c:"山",hun:"뫼",eum:"산"},{c:"行",hun:"다닐",eum:"행"}],def:"산으로 걸어 다님. 등산.",freq:1,src:"교학54"},
+  {word:"三寒四溫",chars:[{c:"三",hun:"석",eum:"삼"},{c:"寒",hun:"찰",eum:"한"},{c:"四",hun:"넷",eum:"사"},{c:"溫",hun:"따뜻할",eum:"온"}],def:"3일간 춥고 4일간 따뜻한 날씨가 반복되는 현상.",freq:1,src:"글샘12"},
+  {word:"三皇五帝",chars:[{c:"三",hun:"석",eum:"삼"},{c:"皇",hun:"임금",eum:"황"},{c:"五",hun:"다섯",eum:"오"},{c:"帝",hun:"임금",eum:"제"}],def:"중국 고대 전설상의 제왕들.",freq:1,src:"교학58"},
+  {word:"相殺",chars:[{c:"相",hun:"서로",eum:"상"},{c:"殺",hun:"죽일",eum:"살"}],def:"서로 엇비겨 없애버림.",freq:1,src:"교학30"},
+  {word:"上品",chars:[{c:"上",hun:"윗",eum:"상"},{c:"品",hun:"물건",eum:"품"}],def:"품질이 좋은 것. 높은 등급.",freq:1,src:"교학50"},
+  {word:"商品",chars:[{c:"商",hun:"장사",eum:"상"},{c:"品",hun:"물건",eum:"품"}],def:"사고파는 물건.",freq:1,src:"교학50"},
+  {word:"賞品",chars:[{c:"賞",hun:"상줄",eum:"상"},{c:"品",hun:"물건",eum:"품"}],def:"상으로 주는 물건.",freq:1,src:"교학50"},
+  {word:"生員",chars:[{c:"生",hun:"날",eum:"생"},{c:"員",hun:"인원",eum:"원"}],def:"조선 시대 생원시에 합격한 사람.",freq:1,src:"교학58"},
+  {word:"選手",chars:[{c:"選",hun:"가릴",eum:"선"},{c:"手",hun:"손",eum:"수"}],def:"경기에 선발된 사람.",freq:1,src:"대학35"},
+  {word:"選好",chars:[{c:"選",hun:"가릴",eum:"선"},{c:"好",hun:"좋을",eum:"호"}],def:"여럿 가운데 어떤 것을 더 좋아하여 고름.",freq:1,src:"천재42"},
+  {word:"雪馬",chars:[{c:"雪",hun:"눈",eum:"설"},{c:"馬",hun:"말",eum:"마"}],def:"썰매.",freq:1,src:"교학54"},
+  {word:"成功",chars:[{c:"成",hun:"이룰",eum:"성"},{c:"功",hun:"공",eum:"공"}],def:"목적을 이룸.",freq:1,src:"교학18"},
+  {word:"姓名",chars:[{c:"姓",hun:"성",eum:"성"},{c:"名",hun:"이름",eum:"명"}],def:"성과 이름.",freq:1,src:"천재42"},
+  {word:"明月",chars:[{c:"明",hun:"밝을",eum:"명"},{c:"月",hun:"달",eum:"월"}],def:"밝은 달.",freq:1,src:"다락52"},
+  {word:"成長",chars:[{c:"成",hun:"이룰",eum:"성"},{c:"長",hun:"길",eum:"장"}],def:"자라서 커짐.",freq:1,src:"미래59"},
+  {word:"歲時風俗",chars:[{c:"歲",hun:"해",eum:"세"},{c:"時",hun:"때",eum:"시"},{c:"風",hun:"바람",eum:"풍"},{c:"俗",hun:"풍속",eum:"속"}],def:"명절이나 절기에 따라 행하는 전통 풍속.",freq:1,src:"미래108"},
+  {word:"素服",chars:[{c:"素",hun:"흰",eum:"소"},{c:"服",hun:"옷",eum:"복"}],def:"흰 옷. 상복(喪服).",freq:1,src:"교학74"},
+  {word:"孫女",chars:[{c:"孫",hun:"손자",eum:"손"},{c:"女",hun:"여자",eum:"녀"}],def:"아들이나 딸의 딸.",freq:1,src:"글샘24"},
+  {word:"孫子",chars:[{c:"孫",hun:"손자",eum:"손"},{c:"子",hun:"아들",eum:"자"}],def:"아들이나 딸의 아들.",freq:1,src:"글샘24"},
+  {word:"受賞",chars:[{c:"受",hun:"받을",eum:"수"},{c:"賞",hun:"상줄",eum:"상"}],def:"상을 받음.",freq:1,src:"박영39"},
+  {word:"修身",chars:[{c:"修",hun:"닦을",eum:"수"},{c:"身",hun:"몸",eum:"신"}],def:"몸과 마음을 닦아 품행을 바르게 함.",freq:1,src:"미래59"},
+  {word:"秀魚",chars:[{c:"秀",hun:"빼어날",eum:"수"},{c:"魚",hun:"물고기",eum:"어"}],def:"숭어. 숭어과의 바닷물고기.",freq:1,src:"교학54"},
+  {word:"手足",chars:[{c:"手",hun:"손",eum:"수"},{c:"足",hun:"발",eum:"족"}],def:"손과 발. 형제자매의 비유.",freq:1,src:"비상25"},
+  {word:"手打",chars:[{c:"手",hun:"손",eum:"수"},{c:"打",hun:"칠",eum:"타"}],def:"손으로 직접 만듦. 수타.",freq:1,src:"교학78"},
+  {word:"修學",chars:[{c:"修",hun:"닦을",eum:"수"},{c:"學",hun:"배울",eum:"학"}],def:"학문을 닦음.",freq:1,src:"비상42"},
+  {word:"數學",chars:[{c:"數",hun:"셈",eum:"수"},{c:"學",hun:"배울",eum:"학"}],def:"수와 양에 관한 학문.",freq:1,src:"비상43"},
+  {word:"熟肉",chars:[{c:"熟",hun:"익을",eum:"숙"},{c:"肉",hun:"고기",eum:"육"}],def:"익힌 고기. 수육.",freq:1,src:"교학78"},
+  {word:"勝敗",chars:[{c:"勝",hun:"이길",eum:"승"},{c:"敗",hun:"패할",eum:"패"}],def:"이기고 짐.",freq:1,src:"대학35"},
+  {word:"時間",chars:[{c:"時",hun:"때",eum:"시"},{c:"間",hun:"사이",eum:"간"}],def:"시간. 어느 때부터 어느 때까지의 동안.",freq:1,src:"비상36"},
+  {word:"星辰",chars:[{c:"星",hun:"별",eum:"성"},{c:"辰",hun:"辰",eum:"-"}],def:"星辰의 뜻",freq:1,src:"교학18"},
+  {word:"名節",chars:[{c:"名",hun:"이름",eum:"명"},{c:"節",hun:"마디",eum:"절"}],def:"명절. 민족적으로 기념하는 절기.",freq:1,src:"미래108"},
+  {word:"木花",chars:[{c:"木",hun:"나무",eum:"목"},{c:"花",hun:"꽃",eum:"화"}],def:"목화. 면화.",freq:1,src:"교학74"},
+  {word:"無窮花",chars:[{c:"無",hun:"없을",eum:"무"},{c:"窮",hun:"다할",eum:"궁"},{c:"花",hun:"꽃",eum:"화"}],def:"우리나라 국화.",freq:1,src:"대학98"},
+  {word:"無難",chars:[{c:"無",hun:"없을",eum:"무"},{c:"難",hun:"어려울",eum:"난"}],def:"어려움이 없음. 무사함.",freq:1,src:"와이44"},
+  {word:"武運",chars:[{c:"武",hun:"호반",eum:"무"},{c:"運",hun:"운반할",eum:"운"}],def:"싸움에서의 운수.",freq:1,src:"교학30"},
+  {word:"問安",chars:[{c:"問",hun:"물을",eum:"문"},{c:"安",hun:"편안할",eum:"안"}],def:"웃어른께 안부를 여쭘.",freq:1,src:"와이44"},
+  {word:"門外漢",chars:[{c:"門",hun:"문",eum:"문"},{c:"外",hun:"바깥",eum:"외"},{c:"漢",hun:"한나라",eum:"한"}],def:"어떤 분야에 전문 지식이 없는 사람.",freq:1,src:"교학34"},
+  {word:"勿論",chars:[{c:"勿",hun:"말",eum:"물"},{c:"論",hun:"논할",eum:"론"}],def:"말할 것도 없음.",freq:1,src:"박영44"},
+  {word:"美女",chars:[{c:"美",hun:"아름다울",eum:"미"},{c:"女",hun:"여자",eum:"녀"}],def:"아름다운 여자.",freq:1,src:"대학31"},
+  {word:"未完成",chars:[{c:"未",hun:"아닐",eum:"미"},{c:"完",hun:"완전할",eum:"완"},{c:"成",hun:"이룰",eum:"성"}],def:"아직 완성되지 않음.",freq:1,src:"대학43"},
+  {word:"民主",chars:[{c:"民",hun:"백성",eum:"민"},{c:"主",hun:"주인",eum:"주"}],def:"국민이 주권을 갖는 정치 원리.",freq:1,src:"와이50"},
+  {word:"密林",chars:[{c:"密",hun:"빽빽할",eum:"밀"},{c:"林",hun:"수풀",eum:"림"}],def:"나무가 빽빽하게 들어선 숲.",freq:1,src:"와이51"},
+  {word:"半減",chars:[{c:"半",hun:"반",eum:"반"},{c:"減",hun:"덜",eum:"감"}],def:"절반으로 줄어듦.",freq:1,src:"교학50"},
+  {word:"反感",chars:[{c:"反",hun:"돌이킬",eum:"반"},{c:"感",hun:"느낄",eum:"감"}],def:"반발하는 감정.",freq:1,src:"교학50"},
+  {word:"四季",chars:[{c:"四",hun:"넷",eum:"사"},{c:"季",hun:"끝",eum:"계"}],def:"봄·여름·가을·겨울의 네 계절.",freq:1,src:"다락52"},
+  {word:"方席",chars:[{c:"方",hun:"모",eum:"방"},{c:"席",hun:"자리",eum:"석"}],def:"앉거나 무릎을 꿇을 때 까는 사각형의 방석.",freq:1,src:"교학82"},
+  {word:"放學",chars:[{c:"放",hun:"놓을",eum:"방"},{c:"學",hun:"배울",eum:"학"}],def:"학기 중 수업이 없는 기간. 방학.",freq:1,src:"천재51"},
+  {word:"白雲",chars:[{c:"白",hun:"흰",eum:"백"},{c:"雲",hun:"구름",eum:"운"}],def:"흰 구름.",freq:1,src:"글샘12"},
+  {word:"白日場",chars:[{c:"白",hun:"흰",eum:"백"},{c:"日",hun:"날",eum:"일"},{c:"場",hun:"마당",eum:"장"}],def:"대낮에 여는 과거 시험.",freq:1,src:"교학34"},
+  {word:"白菜",chars:[{c:"白",hun:"흰",eum:"백"},{c:"菜",hun:"나물",eum:"채"}],def:"배추.",freq:1,src:"교학54"},
+  {word:"法席",chars:[{c:"法",hun:"법",eum:"법"},{c:"席",hun:"자리",eum:"석"}],def:"법회를 베푸는 자리.",freq:1,src:"교학66"},
+  {word:"不得已",chars:[{c:"不",hun:"아닐",eum:"불"},{c:"得",hun:"얻을",eum:"득"},{c:"已",hun:"이미",eum:"이"}],def:"마지못하여 어쩔 수 없이.",freq:1,src:"박영45"},
+  {word:"不毛地",chars:[{c:"不",hun:"아닐",eum:"불"},{c:"毛",hun:"털",eum:"모"},{c:"地",hun:"땅",eum:"지"}],def:"풀이나 나무가 자라지 않는 땅.",freq:1,src:"교학34"},
+  {word:"不世出",chars:[{c:"不",hun:"아닐",eum:"불"},{c:"世",hun:"세상",eum:"세"},{c:"出",hun:"날",eum:"출"}],def:"세상에 드물게 나타남. 매우 뛰어남.",freq:1,src:"교학34"},
+  {word:"不定",chars:[{c:"不",hun:"아닐",eum:"불"},{c:"定",hun:"정할",eum:"정"}],def:"일정하지 않음.",freq:1,src:"교학50"},
+  {word:"不正",chars:[{c:"不",hun:"아닐",eum:"불"},{c:"正",hun:"바를",eum:"정"}],def:"바르지 않음.",freq:1,src:"교학50"},
+  {word:"否定",chars:[{c:"否",hun:"아닐",eum:"부"},{c:"定",hun:"정할",eum:"정"}],def:"그렇지 않다고 단정함.",freq:1,src:"교학50"},
+  {word:"憤怒",chars:[{c:"憤",hun:"분할",eum:"분"},{c:"怒",hun:"성낼",eum:"노"}],def:"분하여 성냄.",freq:1,src:"비상30"},
+  {word:"非凡",chars:[{c:"非",hun:"아닐",eum:"비"},{c:"凡",hun:"무릇",eum:"범"}],def:"보통을 뛰어넘음.",freq:1,src:"대학31"},
+  {word:"悲哀",chars:[{c:"悲",hun:"슬플",eum:"비"},{c:"哀",hun:"슬플",eum:"애"}],def:"슬프고 가련함.",freq:1,src:"비상31"},
+  {word:"反省",chars:[{c:"反",hun:"돌이킬",eum:"반"},{c:"省",hun:"살필",eum:"성"}],def:"자기 언행을 되돌아보며 잘못을 뉘우침.",freq:1,src:"대학70"}
+];
+
+let deck=[...ALL_WORDS],cur=0,revealed=false,scores={again:0,hard:0,good:0},writers={};
+
+function applyFilter(f,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(f==='all') deck=[...ALL_WORDS];
+  else if(f==='2') deck=ALL_WORDS.filter(w=>w.word.length===2);
+  else if(f==='3') deck=ALL_WORDS.filter(w=>w.word.length===3);
+  else if(f==='4') deck=ALL_WORDS.filter(w=>w.word.length>=4);
+  else if(f==='freq') deck=[...ALL_WORDS].sort((a,b)=>b.freq-a.freq);
+  cur=0;revealed=false;writers={};renderCard();
+}
+function shuffleDeck(){
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  cur=0;revealed=false;writers={};renderCard();
+}
+function renderCard(){
+  const c=deck[cur];
+  const disp=document.getElementById('wordDisplay');
+  disp.innerHTML='';writers={};
+  c.chars.forEach((ch,i)=>{
+    const cc=document.createElement('div');cc.className='char-card';
+    const box=document.createElement('div');box.className='char-box';box.id='box-'+i;
+    const stat=document.createElement('div');stat.className='char-static';stat.textContent=ch.c;
+    const svg=document.createElement('div');svg.className='char-svg-wrap';svg.id='svg-'+i;
+    box.appendChild(stat);box.appendChild(svg);
+    box.addEventListener('click',()=>animateChar(ch.c,i));
+    const hun=document.createElement('div');hun.className='char-hunum';hun.id='hunum-'+i;
+    hun.innerHTML='<span class="hun">'+ch.hun+'</span><span class="eum">'+ch.eum+'</span>';
+    const hint=document.createElement('div');hint.className='char-hint';hint.id='hint-'+i;hint.textContent='눌러서 획순';
+    cc.appendChild(box);cc.appendChild(hun);cc.appendChild(hint);disp.appendChild(cc);
+  });
+  revealed=false;
+  document.getElementById('revealBtn').style.display='';
+  document.getElementById('rateWrap').classList.remove('visible');
+  const area=document.getElementById('meaningArea');area.classList.remove('visible');
+  document.getElementById('wordHanja').textContent='';
+  document.getElementById('wordDef').textContent='';
+  document.getElementById('wordMeta').innerHTML='';
+  document.getElementById('progLabel').textContent=(cur+1)+' / '+deck.length;
+  document.getElementById('prog').style.width=Math.round(((cur+1)/deck.length)*100)+'%';
+  updateStats();
+}
+function animateChar(ch,idx){
+  const box=document.getElementById('box-'+idx);
+  const hint=document.getElementById('hint-'+idx);
+  if(box.classList.contains('animating')){if(writers[idx])writers[idx].animateCharacter();return;}
+  box.classList.add('animating');hint.textContent='▶ 재생 중';
+  try{
+    document.getElementById('svg-'+idx).innerHTML='';
+    const w=HanziWriter.create('svg-'+idx,ch,{width:86,height:86,padding:6,strokeColor:'#e94560',radicalColor:'#ff8080',outlineColor:'#2a3a5e',strokeAnimationSpeed:1,delayBetweenStrokes:200,showCharacter:false,showOutline:true});
+    writers[idx]=w;
+    w.animateCharacter({onComplete:()=>{hint.textContent='↺ 다시 재생';}});
+  }catch(e){box.classList.remove('animating');hint.textContent='획순 미지원';}
+}
+function revealMeaning(){
+  revealed=true;const c=deck[cur];
+  c.chars.forEach((_,i)=>{const h=document.getElementById('hunum-'+i);if(h)h.classList.add('visible');});
+  document.getElementById('wordHanja').textContent=c.word;
+  document.getElementById('wordDef').textContent=c.def;
+  document.getElementById('wordMeta').innerHTML='<span class="freq-badge">빈도 '+c.freq+'</span><span class="src-badge">출처: '+c.src+'</span>';
+  document.getElementById('meaningArea').classList.add('visible');
+  document.getElementById('revealBtn').style.display='none';
+  document.getElementById('rateWrap').classList.add('visible');
+}
+function rate(r){if(r==='again')scores.again++;else if(r==='hard')scores.hard++;else scores.good++;updateStats();nextCard();}
+function nextCard(){if(cur<deck.length-1){cur++;renderCard();}}
+function prevCard(){if(cur>0){cur--;renderCard();}}
+function updateStats(){
+  document.getElementById('sTotal').textContent=deck.length;
+  document.getElementById('sAgain').textContent=scores.again;
+  document.getElementById('sHard').textContent=scores.hard;
+  document.getElementById('sGood').textContent=scores.good;
+}
+renderCard();
+</script>
+
+<!-- 제출 모달 -->
+<div class="sub-overlay" id="subOverlay">
+  <div class="sub-box">
+    <div class="sub-title">📤 과제 제출 — 한자 플래시카드</div>
+    <div class="sub-row">
+      <label>이름</label>
+      <input type="text" id="subName" placeholder="홍길동">
+    </div>
+    <div class="sub-row">
+      <label>학번</label>
+      <input type="text" id="subSid" placeholder="2024001">
+    </div>
+    <div class="sub-row">
+      <label>제출 시기</label>
+      <select id="subTerm">
+        <option value="">선택하세요</option>
+        <option value="중간">중간 과제</option>
+        <option value="기말">기말 과제</option>
+      </select>
+    </div>
+    <div class="sub-row">
+      <label>학습 소감</label>
+      <textarea id="subMemo" placeholder="오늘 학습한 내용이나 느낀 점을 입력하세요."></textarea>
+    </div>
+    <div class="sub-btns">
+      <button class="sub-cancel" onclick="closeSubModal()">취소</button>
+      <button class="sub-ok" id="subOkBtn" onclick="submitAssignment()">제출하기</button>
+    </div>
+    <div class="sub-msg" id="subMsg"></div>
+  </div>
+</div>
+
+<!-- 오른쪽 하단 제출 버튼 -->
+<button class="sub-float" onclick="openSubModal()">📤 과제 제출</button>
+
+<script>
+var _SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbw771Qtr-YI4icYvN-IngcBI9FAt-DYGpUEEfqfYo-ke4nefv9IXYAk5JntaCGssKii/exec';
+var _APP_NAME = '한자 플래시카드';
+
+function openSubModal(){
+  document.getElementById('subOverlay').classList.add('on');
+  document.getElementById('subMsg').textContent='';
+  document.getElementById('subMsg').className='sub-msg';
+}
+function closeSubModal(){
+  document.getElementById('subOverlay').classList.remove('on');
+}
+document.getElementById('subOverlay').addEventListener('click',function(e){
+  if(e.target===this)closeSubModal();
+});
+
+function submitAssignment(){
+  var name=document.getElementById('subName').value.trim();
+  var sid=document.getElementById('subSid').value.trim();
+  var term=document.getElementById('subTerm').value;
+  var memo=document.getElementById('subMemo').value.trim();
+  if(!name||!sid||!term){
+    var m=document.getElementById('subMsg');
+    m.textContent='이름, 학번, 제출 시기를 모두 입력해주세요.';
+    m.className='sub-msg err';return;
+  }
+  var btn=document.getElementById('subOkBtn');
+  btn.disabled=true;btn.textContent='전송 중...';
+  var appData={
+    totalCards: deck.length,
+    again: scores.again,
+    hard: scores.hard,
+    good: scores.good,
+    scoreRate: deck.length>0?Math.round((scores.good/deck.length)*100)+'%':'—'
+  };
+  var payload=Object.assign({name:name,sid:sid,term:term,app:_APP_NAME,memo:memo},appData);
+  var form=new FormData();
+  form.append('payload',JSON.stringify(payload));
+  fetch(_SUBMIT_URL,{method:'POST',body:JSON.stringify(payload)})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var m=document.getElementById('subMsg');
+    m.textContent='✓ 제출 완료! 교수님께 전달되었습니다.';
+    m.className='sub-msg ok';
+    btn.disabled=false;btn.textContent='제출하기';
+    setTimeout(closeSubModal,2000);
+  })
+  .catch(function(){
+    var m=document.getElementById('subMsg');
+    m.textContent='전송 오류가 발생했습니다. 다시 시도해주세요.';
+    m.className='sub-msg err';
+    btn.disabled=false;btn.textContent='제출하기';
+  });
+}
+</script>
+</body>
+</html>

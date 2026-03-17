@@ -256,6 +256,27 @@ body{font-family:'Noto Sans KR',sans-serif;background:#ece6da;color:var(--ink);m
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;z-index:200;transition:transform .3s ease;white-space:nowrap;pointer-events:none}
 .toast.show{transform:translateX(-50%) translateY(0)}
 </style>
+
+<style>
+.sub-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center}
+.sub-overlay.on{display:flex}
+.sub-box{background:#faf8f4;border-radius:16px;padding:28px 26px;width:92%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.sub-title{font-family:'Noto Serif KR',serif;font-size:18px;color:#1a1410;margin-bottom:18px;text-align:center}
+.sub-row{margin-bottom:13px}
+.sub-row label{display:block;font-size:12px;color:#6b5744;margin-bottom:5px;font-weight:500}
+.sub-row input,.sub-row select,.sub-row textarea{width:100%;padding:10px 12px;border:1px solid #e0d5c5;border-radius:8px;font-size:14px;font-family:'Noto Sans KR',sans-serif;color:#1a1410;background:#f3ede3;outline:none;transition:border .15s}
+.sub-row input:focus,.sub-row select:focus,.sub-row textarea:focus{border-color:#c0392b}
+.sub-row textarea{resize:vertical;min-height:70px}
+.sub-btns{display:flex;gap:10px;margin-top:18px}
+.sub-ok{flex:1;padding:12px;border-radius:9px;background:#c0392b;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:background .15s}
+.sub-ok:hover{background:#a93226}
+.sub-ok:disabled{background:#ccc;cursor:not-allowed}
+.sub-cancel{padding:12px 18px;border-radius:9px;background:#f3ede3;color:#6b5744;border:1px solid #e0d5c5;font-size:14px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.sub-msg{text-align:center;font-size:13px;margin-top:12px;min-height:18px}
+.sub-msg.ok{color:#3d6b4a}.sub-msg.err{color:#c0392b}
+.sub-float{position:fixed;bottom:22px;right:22px;z-index:1000;padding:12px 20px;background:#c0392b;color:#fff;border:none;border-radius:24px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;box-shadow:0 4px 14px rgba(192,57,43,.4);transition:all .2s}
+.sub-float:hover{background:#a93226;transform:translateY(-2px)}
+</style>
 </head>
 <body>
 
@@ -951,6 +972,102 @@ function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classL
 function goSel(){showScreen('s-sel');document.getElementById('hdrB').textContent='시 선택';}
 let tT=null;
 function showToast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>e.classList.remove('show'),2500);}
+</script>
+
+<!-- 제출 모달 -->
+<div class="sub-overlay" id="subOverlay">
+  <div class="sub-box">
+    <div class="sub-title">📤 과제 제출 — 한시 음독 훈련</div>
+    <div class="sub-row">
+      <label>이름</label>
+      <input type="text" id="subName" placeholder="홍길동">
+    </div>
+    <div class="sub-row">
+      <label>학번</label>
+      <input type="text" id="subSid" placeholder="2024001">
+    </div>
+    <div class="sub-row">
+      <label>제출 시기</label>
+      <select id="subTerm">
+        <option value="">선택하세요</option>
+        <option value="중간">중간 과제</option>
+        <option value="기말">기말 과제</option>
+      </select>
+    </div>
+    <div class="sub-row">
+      <label>학습 소감</label>
+      <textarea id="subMemo" placeholder="오늘 학습한 내용이나 느낀 점을 입력하세요."></textarea>
+    </div>
+    <div class="sub-btns">
+      <button class="sub-cancel" onclick="closeSubModal()">취소</button>
+      <button class="sub-ok" id="subOkBtn" onclick="submitAssignment()">제출하기</button>
+    </div>
+    <div class="sub-msg" id="subMsg"></div>
+  </div>
+</div>
+
+<!-- 오른쪽 하단 제출 버튼 -->
+<button class="sub-float" onclick="openSubModal()">📤 과제 제출</button>
+
+<script>
+var _SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbw771Qtr-YI4icYvN-IngcBI9FAt-DYGpUEEfqfYo-ke4nefv9IXYAk5JntaCGssKii/exec';
+var _APP_NAME = '한시 음독 훈련';
+
+function openSubModal(){
+  document.getElementById('subOverlay').classList.add('on');
+  document.getElementById('subMsg').textContent='';
+  document.getElementById('subMsg').className='sub-msg';
+}
+function closeSubModal(){
+  document.getElementById('subOverlay').classList.remove('on');
+}
+document.getElementById('subOverlay').addEventListener('click',function(e){
+  if(e.target===this)closeSubModal();
+});
+
+function submitAssignment(){
+  var name=document.getElementById('subName').value.trim();
+  var sid=document.getElementById('subSid').value.trim();
+  var term=document.getElementById('subTerm').value;
+  var memo=document.getElementById('subMemo').value.trim();
+  if(!name||!sid||!term){
+    var m=document.getElementById('subMsg');
+    m.textContent='이름, 학번, 제출 시기를 모두 입력해주세요.';
+    m.className='sub-msg err';return;
+  }
+  var btn=document.getElementById('subOkBtn');
+  btn.disabled=true;btn.textContent='전송 중...';
+  var appData={
+    poem: ST.poem?ST.poem.title:'—',
+    totalScore: (function(){
+      var fl=ST.results.filter(function(r){return r;});
+      if(!fl.length)return'—';
+      return Math.round(fl.reduce(function(s,r){return s+r.score;},0)/fl.length*100)+'%';
+    })(),
+    line1: ST.results[0]?Math.round(ST.results[0].score*100)+'%':'—',
+    line2: ST.results[1]?Math.round(ST.results[1].score*100)+'%':'—',
+    line3: ST.results[2]?Math.round(ST.results[2].score*100)+'%':'—',
+    line4: ST.results[3]?Math.round(ST.results[3].score*100)+'%':'—'
+  };
+  var payload=Object.assign({name:name,sid:sid,term:term,app:_APP_NAME,memo:memo},appData);
+  var form=new FormData();
+  form.append('payload',JSON.stringify(payload));
+  fetch(_SUBMIT_URL,{method:'POST',body:JSON.stringify(payload)})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var m=document.getElementById('subMsg');
+    m.textContent='✓ 제출 완료! 교수님께 전달되었습니다.';
+    m.className='sub-msg ok';
+    btn.disabled=false;btn.textContent='제출하기';
+    setTimeout(closeSubModal,2000);
+  })
+  .catch(function(){
+    var m=document.getElementById('subMsg');
+    m.textContent='전송 오류가 발생했습니다. 다시 시도해주세요.';
+    m.className='sub-msg err';
+    btn.disabled=false;btn.textContent='제출하기';
+  });
+}
 </script>
 </body>
 </html>
