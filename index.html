@@ -20,6 +20,9 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;display:flex;m
 .y-btn{display:block;width:100%;padding:9px 1rem 9px 1.15rem;font-size:14px;color:#8aadcc;background:transparent;border:none;border-left:3px solid transparent;text-align:left;cursor:pointer;transition:all .15s;font-family:inherit}
 .y-btn:hover{color:#fff;background:rgba(255,255,255,0.07)}
 .y-btn.on{color:#C8A84B;border-left-color:#C8A84B;background:rgba(200,168,75,0.1);font-weight:500}
+.yr-row{display:flex;align-items:center;gap:0}
+.yr-del{background:transparent;border:none;color:rgba(255,255,255,0.2);font-size:11px;cursor:pointer;padding:0 10px 0 0;flex-shrink:0;transition:color .15s;line-height:1}
+.yr-del:hover{color:#e07070}
 .sb-add-yr{display:block;width:100%;padding:7px 1rem;font-size:12px;color:#5878a0;background:transparent;border:none;text-align:left;cursor:pointer;font-family:inherit}
 .sb-add-yr:hover{color:#aac}
 .sb-bottom{margin-top:auto;padding:.85rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:5px}
@@ -377,9 +380,9 @@ function generatePublicPage(){
 function toH(v){
   if(v===null||v===undefined) return 0;
   if(typeof v==='number'){
-    /* Excel 시간 분수: 0~1 사이 값 (예: 0.5 = 12시간) */
     const raw=Math.abs(v);
-    return raw<1 ? raw*24 : raw*24; /* 1 이상이면 날짜+시간 혼합 → 소수부만 */
+    /* 1 이상 = 날짜+시간 혼합 (예: 238.507) → 소수부(시간)만 사용 */
+    return raw>=1 ? (raw%1)*24 : raw*24;
   }
   if(typeof v==='string'){
     const m=v.match(/(\d+):(\d+)(?::(\d+))?/);
@@ -405,6 +408,24 @@ function classAct(c){
 }
 function sortedYears(){ return Object.keys(allData).sort().reverse(); }
 function curWeeks(){ return (allData[curYear]||[]).slice().sort((a,b)=>a.weekStart.localeCompare(b.weekStart)); }
+
+/* ════ 이름 기반 고정 색상 ════
+   전체 데이터에서 이름이 처음 등장한 순서로 색상 고정
+   주차가 달라져도 같은 학생은 항상 같은 색 */
+function buildColorMap(){
+  const map={};
+  // 연도 전체에서 등장 순서대로 색상 배정
+  sortedYears().slice().reverse().forEach(yr=>{
+    (allData[yr]||[]).slice().sort((a,b)=>a.weekStart.localeCompare(b.weekStart)).forEach(w=>{
+      w.students.forEach(s=>{
+        if(!(s.name in map)) map[s.name]=Object.keys(map).length;
+      });
+    });
+  });
+  return map;
+}
+let _colorMap={};
+function nc(name){ return PAL[(_colorMap[name]||0)%PAL.length]; }
 
 /* ════ 엑셀 파싱 ════ */
 function parseXL(wb){
@@ -546,16 +567,23 @@ function kc(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
 function renderSidebar(){
   const yrs = sortedYears();
 
-  // 연도 목록
+  // 연도 목록 (데이터 있는 연도만 표시)
   let ytabs = '';
   yrs.forEach(yr => {
-    ytabs += `<button class="y-btn ${yr===curYear?'on':''}" onclick="selectYear('${yr}')">${yr}학년도</button>`;
+    const hasData = (allData[yr]||[]).length > 0;
+    const delBtn = !PUBLIC_MODE
+      ? `<button class="yr-del" onclick="deleteYear('${yr}')" title="${yr}학년도 삭제">✕</button>`
+      : '';
+    ytabs += `<div class="yr-row">
+      <button class="y-btn ${yr===curYear?'on':''}" style="flex:1" onclick="selectYear('${yr}')">${yr}학년도${!hasData?' (비어있음)':''}</button>
+      ${delBtn}
+    </div>`;
   });
 
   if(!PUBLIC_MODE){
     if(addingYear){
       ytabs += `<div class="yr-input-row">
-        <input class="yr-input" type="number" id="yr-input" placeholder="연도" min="2020" max="2099" value="${new Date().getFullYear()+1}">
+        <input class="yr-input" type="number" id="yr-input" placeholder="연도" min="2020" max="2099" value="${new Date().getFullYear()}">
         <button class="yr-ok" onclick="confirmAddYear()">추가</button>
       </div>`;
     } else {
@@ -593,8 +621,22 @@ function confirmAddYear(){
   if(!inp) return;
   const yr = String(inp.value).trim();
   if(!/^\d{4}$/.test(yr)){ alert('올바른 연도를 입력하세요.'); return; }
-  if(!allData[yr]) allData[yr] = [];
+  if(allData[yr] !== undefined){ alert(`${yr}학년도는 이미 존재합니다.`); return; }
+  allData[yr] = [];
   saveAll(); curYear = yr; selW = 0; addingYear = false;
+  initDash();
+}
+function deleteYear(yr){
+  const hasData = (allData[yr]||[]).length > 0;
+  const msg = hasData
+    ? `${yr}학년도에 ${allData[yr].length}개 주차 데이터가 있습니다.\n정말 삭제하시겠습니까?`
+    : `${yr}학년도(데이터 없음)를 삭제하시겠습니까?`;
+  if(!confirm(msg)) return;
+  delete allData[yr];
+  saveAll();
+  const yrs = sortedYears();
+  curYear = yrs.length > 0 ? yrs[0] : '';
+  selW = 0; selD = -1; addingYear = false;
   initDash();
 }
 
@@ -625,6 +667,7 @@ function initDash(){
   }
 
   const allNames = [...new Set(weeks.flatMap(w=>w.students.map(s=>s.name)))];
+  _colorMap = buildColorMap();
   document.getElementById('hdr-yr').textContent = `${curYear}학년도`;
   document.getElementById('hdr-sub').textContent = `${weeks.length}주차 누적 · ${allNames.length}명`;
 
@@ -637,8 +680,8 @@ function initDash(){
   } else { hb.innerHTML=''; }
 
   // 범례
-  document.getElementById('legend').innerHTML=allNames.map((n,i)=>
-    `<div class="leg-item"><span class="leg-dot" style="background:${PAL[i%PAL.length]}"></span>${n}</div>`
+  document.getElementById('legend').innerHTML=allNames.map(n=>
+    `<div class="leg-item"><span class="leg-dot" style="background:${nc(n)}"></span>${n}</div>`
   ).join('');
 
   // 탭
@@ -665,8 +708,8 @@ function renderWeekly(allNames, weeks){
     `<button class="wbtn ${i===selW?'on':''}" onclick="gW(${i})">${w.label}</button>`
   ).join('');
 
-  const w=weeks[selW], nc=Math.min(w.students.length,4);
-  document.getElementById('wk-cards').style.gridTemplateColumns=`repeat(${nc},1fr)`;
+  const w=weeks[selW], nc2=Math.min(w.students.length,4);
+  document.getElementById('wk-cards').style.gridTemplateColumns=`repeat(${nc2},1fr)`;
   document.getElementById('wk-cards').innerHTML=w.students.map((s,i)=>{
     const tot=s.days.reduce((a,d)=>a+d.hours,0);
     const ad=s.days.filter(d=>d.hours>0).length;
@@ -679,7 +722,7 @@ function renderWeekly(allNames, weeks){
       else if(diff<-0.5) trend=`<span class="badge-dn">▼ ${fmtH(Math.abs(diff))} 감소</span>`;
       else trend=`<span class="badge-eq">— 유사 수준</span>`;
     }
-    return`<div class="card"><div class="card-name" style="color:${PAL[i%PAL.length]}">${s.name}</div>
+    return`<div class="card"><div class="card-name" style="color:${nc(s.name)}">${s.name}</div>
       <div class="card-val">${fmtH(tot)}</div>
       <div class="card-sub">학습일 ${ad}일 · 일평균 ${ad>0?fmtH(tot/ad):'—'}<br>${trend}</div></div>`;
   }).join('');
@@ -696,7 +739,7 @@ function renderWeekly(allNames, weeks){
     charts['bc']=new Chart(ctx,{type:'bar',
       data:{labels:days.map(d=>d.label.replace(/\(.+\)/,'')),
         datasets:w.students.map((s,i)=>({label:s.name,data:s.days.map(d=>r1(d.hours)),
-          backgroundColor:PAL[i%PAL.length]+'bb',borderColor:PAL[i%PAL.length],borderWidth:1,borderRadius:3}))},
+          backgroundColor:nc(s.name)+'bb',borderColor:nc(s.name),borderWidth:1,borderRadius:3}))},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{x:{grid:{display:false},ticks:{font:{size:11},autoSkip:false}},
           y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'h',font:{size:11}},beginAtZero:true}}}});
@@ -726,7 +769,7 @@ function renderCumul(allNames, weeks){
       else if(diff<-0.5) trend=`<span class="badge-dn">▼ 최근 하락 추세</span>`;
       else trend=`<span class="badge-eq">— 안정적 유지</span>`;
     }
-    return{name,total,wc,avg,studyDays,trend,color:PAL[i%PAL.length]};
+    return{name,total,wc,avg,studyDays,trend,color:nc(name)};
   });
 
   const nc=Math.min(allNames.length,4);
@@ -741,15 +784,15 @@ function renderCumul(allNames, weeks){
     /* B. 꺾은선 */
     const lh=Math.max(200,weeks.length*46+80);
     document.getElementById('line-wrap').style.height=lh+'px';
-    document.getElementById('line-leg').innerHTML=allNames.map((n,i)=>
-      `<div class="cl-item"><span class="cl-dot" style="background:${PAL[i%PAL.length]}"></span>${n}</div>`).join('');
+    document.getElementById('line-leg').innerHTML=allNames.map(n=>
+      `<div class="cl-item"><span class="cl-dot" style="background:${nc(n)}"></span>${n}</div>`).join('');
     const ctxL=document.getElementById('lc');
     if(ctxL){ kc('lc');
       charts['lc']=new Chart(ctxL,{type:'line',
         data:{labels:weeks.map(w=>w.label),
           datasets:allNames.map((name,i)=>({label:name,
             data:weeks.map(w=>{const s=w.students.find(s=>s.name===name);return s?r1(s.days.reduce((a,d)=>a+d.hours,0)):null;}),
-            borderColor:PAL[i%PAL.length],backgroundColor:PAL[i%PAL.length]+'18',
+            borderColor:nc(name),backgroundColor:nc(name)+'18',
             borderWidth:2.5,pointRadius:5,pointHoverRadius:7,tension:0.3,fill:false,spanGaps:true}))},
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
           tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y}h`}}},
@@ -758,8 +801,8 @@ function renderCumul(allNames, weeks){
     }
 
     /* C. 요일별 평균 */
-    document.getElementById('day-leg').innerHTML=allNames.map((n,i)=>
-      `<div class="cl-item"><span class="cl-dot" style="background:${PAL[i%PAL.length]}"></span>${n}</div>`).join('');
+    document.getElementById('day-leg').innerHTML=allNames.map(n=>
+      `<div class="cl-item"><span class="cl-dot" style="background:${nc(n)}"></span>${n}</div>`).join('');
     const dayAvg=allNames.map(name=>DAYS.map((_,di)=>{
       const wl=weeks.filter(w=>w.students.some(s=>s.name===name));
       if(!wl.length) return 0;
@@ -769,7 +812,7 @@ function renderCumul(allNames, weeks){
     if(ctxD){ kc('dc');
       charts['dc']=new Chart(ctxD,{type:'bar',
         data:{labels:DAYS,datasets:allNames.map((name,i)=>({label:name,data:dayAvg[i],
-          backgroundColor:PAL[i%PAL.length]+'bb',borderColor:PAL[i%PAL.length],borderWidth:1,borderRadius:3}))},
+          backgroundColor:nc(name)+'bb',borderColor:nc(name),borderWidth:1,borderRadius:3}))},
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
           scales:{x:{grid:{display:false},ticks:{font:{size:11}}},
             y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'h',font:{size:11}},beginAtZero:true}}}});
@@ -800,13 +843,13 @@ function renderCumul(allNames, weeks){
   const cumTotals=allNames.map(name=>weeks.reduce((a,w)=>{const s=w.students.find(s=>s.name===name);return a+(s?s.days.reduce((b,d)=>b+d.hours,0):0);},0));
   const delBtn = PUBLIC_MODE ? '<th></th>' : '<th></th>';
   const th=`<thead><tr><th>주차</th>
-    ${allNames.map((n,i)=>`<th style="text-align:right;color:${PAL[i%PAL.length]}">${n}</th>`).join('')}
+    ${allNames.map(n=>`<th style="text-align:right;color:${nc(n)}">${n}</th>`).join('')}
     <th style="text-align:right;color:#888">합계</th>${delBtn}</tr></thead>`;
   const tb=`<tbody>`+weeks.map(w=>{
     const cols=allNames.map((name,i)=>{
       const s=w.students.find(s=>s.name===name);
       const h=s?s.days.reduce((a,d)=>a+d.hours,0):0;
-      return`<td style="text-align:right;color:${PAL[i%PAL.length]}">${h>0?fmtH(h):'—'}</td>`;
+      return`<td style="text-align:right;color:${nc(name)}">${h>0?fmtH(h):'—'}</td>`;
     }).join('');
     const rt=w.students.reduce((a,s)=>a+s.days.reduce((b,d)=>b+d.hours,0),0);
     const del=PUBLIC_MODE?'<td></td>':`<td style="text-align:right"><button class="btn sm danger" onclick="delWeek('${w.weekStart}')">삭제</button></td>`;
@@ -815,7 +858,7 @@ function renderCumul(allNames, weeks){
   }).join('')
   +`<tr style="border-top:2px solid #e0dbd3;background:#faf9f7">
     <td style="color:#1A2F5A;font-weight:500">누적 합계</td>
-    ${cumTotals.map((t,i)=>`<td style="text-align:right;color:${PAL[i%PAL.length]};font-weight:500">${fmtH(t)}</td>`).join('')}
+    ${cumTotals.map((t,ni)=>`<td style="text-align:right;color:${nc(allNames[ni])};font-weight:500">${fmtH(t)}</td>`).join('')}
     <td style="text-align:right;color:#1A2F5A;font-weight:500">${fmtH(cumTotals.reduce((a,b)=>a+b,0))}</td>
     <td></td></tr></tbody>`;
   document.getElementById('week-tbl').innerHTML=th+tb;
@@ -844,7 +887,7 @@ function gD(di){
     const d=s.days[di];
     const acts=d.activities.length===0?'<p class="no-s">학업 기록 없음</p>'
       :d.activities.map(a=>`<div class="act"><span class="act-t">${a.time}</span><span class="act-c">${a.content}</span></div>`).join('');
-    return`<div class="det-card"><div class="det-name" style="color:${PAL[si%PAL.length]}">${s.name} · ${fmtH(d.hours)}</div>${acts}</div>`;
+    return`<div class="det-card"><div class="det-name" style="color:${nc(s.name)}">${s.name} · ${fmtH(d.hours)}</div>${acts}</div>`;
   }).join('');
 }
 function showAdd(){
@@ -870,9 +913,6 @@ if(PUBLIC_MODE){
   allData = EMBEDDED_DATA || {};
 } else {
   allData = loadAll();
-  // 기본 연도가 없으면 현재 연도 생성
-  const now = String(new Date().getFullYear());
-  if(!allData[now]) allData[now] = [];
 }
 const yrs = sortedYears();
 curYear = yrs.length>0 ? yrs[0] : String(new Date().getFullYear());
